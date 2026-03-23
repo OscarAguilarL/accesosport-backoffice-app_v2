@@ -1,0 +1,171 @@
+// API Types based on OpenAPI spec
+
+export interface AuthResponse {
+  id: string
+  email: string
+  roles: string[]
+  token: string
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  email: string
+  password: string
+  passwordConfirmation: string
+}
+
+export interface ProblemDetail {
+  type?: string
+  title?: string
+  status?: number
+  detail?: string
+  instance?: string
+  properties?: Record<string, unknown>
+}
+
+export interface LocationDto {
+  place?: string
+  city?: string
+  country?: string
+  latitude?: number
+  longitude?: number
+  fullAddress?: string
+}
+
+export interface RegistrationPeriodDto {
+  start?: string
+  end?: string
+}
+
+export interface OrganizerDto {
+  id?: string
+  email?: string
+}
+
+export interface EventImageResponse {
+  id?: string
+  imageUrl?: string
+  displayOrder?: number
+}
+
+export interface EventResponse {
+  id?: string
+  name?: string
+  description?: string
+  eventDate?: string
+  location?: LocationDto
+  raceType?: string
+  Distance?: string
+  price?: number
+  registrationPeriod?: RegistrationPeriodDto
+  maxParticipants?: number
+  registeredParticipants?: number
+  registrationsAvailable?: number
+  status?: string
+  canRegister?: boolean
+  organizer?: OrganizerDto
+  coverImageUrl?: string
+  galleryImages?: EventImageResponse[]
+  createdAt?: string
+}
+
+export interface EventSummaryResponse {
+  id?: string
+  name?: string
+  eventDate?: string
+  location?: string
+  distance?: string
+  price?: number
+  registrationsAvailable?: number
+  status?: string
+  canRegister?: boolean
+}
+
+export interface CreateEventRequest {
+  name: string
+  description?: string
+  eventDate: string
+  place: string
+  city?: string
+  country?: string
+  latitude?: number
+  longitude?: number
+  raceType: 'MARATHON' | 'HALF_MARATHON' | 'TEN_KM' | 'FIVE_KM' | 'OTHER'
+  distance: number
+  distanceUnit: 'KM' | 'MI'
+  price: number
+  registrationStartDate: string
+  registrationEndDate: string
+  maxParticipants?: number
+}
+
+export interface OrganizerProfileResponse {
+  id?: string
+  organizationName?: string
+  logoUrl?: string
+  website?: string
+  facebook?: string
+  instagram?: string
+  description?: string
+  verificationStatus?: string
+  verifiedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateOrganizerProfileRequest {
+  organizationName: string
+  website?: string
+  facebook?: string
+  instagram?: string
+  description?: string
+}
+
+export interface UserInformationDto {
+  id?: string
+  email?: string
+  firstName?: string
+  lastName?: string
+  secondLastName?: string
+  birthDate?: string
+  gender?: string
+  phoneNumber?: string
+  address?: AddressDto
+}
+
+export interface AddressDto {
+  street?: string
+  externalNumber?: string
+  internalNumber?: string
+  neighborhood?: string
+  city?: string
+  state?: string
+  country?: string
+  zipCode?: string
+}
+
+// Event status types
+export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+// Race types with labels
+export const RACE_TYPES = {
+  MARATHON: 'Maratón',
+  HALF_MARATHON: 'Medio Maratón',
+  TEN_KM: '10K',
+  FIVE_KM: '5K',
+  OTHER: 'Otro',
+} as const
+
+export const EVENT_STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' }> = {
+  DRAFT: { label: 'Borrador', variant: 'secondary' },
+  PUBLISHED: { label: 'Publicado', variant: 'default' },
+  REGISTRATION_OPEN: { label: 'Inscripciones Abiertas', variant: 'success' },
+  REGISTRATION_CLOSED: { label: 'Inscripciones Cerradas', variant: 'warning' },
+  IN_PROGRESS: { label: 'En Curso', variant: 'default' },
+  COMPLETED: { label: 'Completado', variant: 'outline' },
+  CANCELLED: { label: 'Cancelado', variant: 'destructive' },
+}
