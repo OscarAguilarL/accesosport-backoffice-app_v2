@@ -127,7 +127,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex justify-center items-center gap-2 mb-2">
             {STEPS.map((s, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div
@@ -340,7 +340,7 @@ export default function OnboardingPage() {
                   </Field>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -423,7 +423,7 @@ export default function OnboardingPage() {
                   />
                 </Field>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -477,7 +477,7 @@ export default function OnboardingPage() {
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
                     variant="outline"
