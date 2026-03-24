@@ -1,13 +1,14 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import { auth as authApi, user as userApi } from './api'
+import { auth as authApi, user as userApi, ApiError } from './api'
 import type { UserInformationDto, LoginRequest, RegisterRequest } from './types'
 
 interface AuthContextType {
   user: UserInformationDto | null
   isLoading: boolean
   isAuthenticated: boolean
+  needsOnboarding: boolean
   login: (data: LoginRequest) => Promise<void>
   signup: (data: RegisterRequest) => Promise<void>
   logout: () => void
@@ -19,20 +20,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInformationDto | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
   const fetchUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('accessToken')
       if (!token) {
         setUser(null)
+        setNeedsOnboarding(false)
         return
       }
       const userData = await userApi.getMe()
       setUser(userData)
-    } catch {
+      setNeedsOnboarding(false)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 422) {
+        // Token válido pero el usuario no ha completado su información personal
+        setNeedsOnboarding(true)
+        setUser(null)
+        return
+      }
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
       setUser(null)
+      setNeedsOnboarding(false)
     }
   }, [])
 
@@ -67,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        needsOnboarding,
         login,
         signup,
         logout,

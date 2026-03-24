@@ -125,6 +125,26 @@ export interface CreateOrganizerProfileRequest {
   description?: string
 }
 
+export interface SavePersonalDataRequest {
+  firstName: string
+  lastName: string
+  secondLastName?: string
+  birthDate: string
+  gender: string
+  phoneNumber: string
+}
+
+export interface SaveUserAddressRequest {
+  street: string
+  externalNumber: string
+  internalNumber?: string
+  neighborhood: string
+  city: string
+  state: string
+  country: string
+  zipCode: string
+}
+
 export interface UserInformationDto {
   id?: string
   email?: string

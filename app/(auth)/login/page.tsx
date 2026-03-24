@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FieldGroup, Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
@@ -88,9 +89,8 @@ export default function LoginPage() {
               
               <Field>
                 <FieldLabel htmlFor="password">Contraseña</FieldLabel>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}

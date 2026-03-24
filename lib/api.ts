@@ -8,6 +8,8 @@ import type {
   OrganizerProfileResponse,
   CreateOrganizerProfileRequest,
   UserInformationDto,
+  SavePersonalDataRequest,
+  SaveUserAddressRequest,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -156,6 +158,18 @@ export const events = {
 export const user = {
   getMe: () =>
     fetchApi<UserInformationDto>('/api/v1/user/me'),
+
+  savePersonalData: (data: SavePersonalDataRequest) =>
+    fetchApi<void>('/api/v1/user/personal-information', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  saveAddress: (data: SaveUserAddressRequest) =>
+    fetchApi<void>('/api/v1/user/address', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Profile endpoints
