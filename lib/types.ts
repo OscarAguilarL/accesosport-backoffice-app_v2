@@ -117,6 +117,11 @@ export interface OrganizerProfileResponse {
   updatedAt?: string
 }
 
+export interface OrganizerProfileWithTokenResponse {
+  token: string
+  profile: OrganizerProfileResponse
+}
+
 export interface CreateOrganizerProfileRequest {
   organizationName: string
   website?: string

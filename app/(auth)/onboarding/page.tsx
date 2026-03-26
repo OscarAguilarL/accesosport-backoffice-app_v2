@@ -12,6 +12,7 @@ import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
+import { ImageDropzone } from '@/components/ui/image-dropzone'
 
 const STEPS = [
   { title: 'Información personal', description: 'Cuéntanos sobre ti' },
@@ -90,7 +91,8 @@ export default function OnboardingPage() {
     setIsLoading(true)
     setError(null)
     try {
-      await profileApi.createOrganizer(organizerProfile)
+      const { token } = await profileApi.createOrganizer(organizerProfile)
+      localStorage.setItem('accessToken', token)
       setStep(3)
     } catch (err) {
       setError(err instanceof ApiError ? (err.detail || err.message) : 'Error al crear el perfil.')
@@ -444,36 +446,17 @@ export default function OnboardingPage() {
           {step === 3 && (
             <form onSubmit={handleLogoSubmit}>
               <FieldGroup>
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-dashed border-muted-foreground/30 bg-muted">
-                    {logoPreview ? (
-                      <img
-                        src={logoPreview}
-                        alt="Logo preview"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-
-                  <Field>
-                    <Input
-                      id="logo"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleLogoChange}
-                      disabled={isLoading}
-                      className="cursor-pointer"
-                    />
-                  </Field>
-
+                <div className="flex flex-col gap-2">
+                  <ImageDropzone
+                    preview={logoPreview}
+                    onChange={(file) => { setLogoFile(file); setLogoPreview(URL.createObjectURL(file)) }}
+                    onRemove={() => { setLogoFile(null); setLogoPreview(null) }}
+                    disabled={isLoading}
+                    shape="circle"
+                    className="w-full"
+                  />
                   <p className="text-xs text-muted-foreground text-center">
-                    Formatos aceptados: JPEG, PNG, WebP. Este paso es opcional.
+                    JPEG, PNG o WebP · Este paso es opcional.
                   </p>
                 </div>
 

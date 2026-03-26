@@ -6,6 +6,7 @@ import type {
   EventSummaryResponse,
   CreateEventRequest,
   OrganizerProfileResponse,
+  OrganizerProfileWithTokenResponse,
   CreateOrganizerProfileRequest,
   UserInformationDto,
   SavePersonalDataRequest,
@@ -178,7 +179,7 @@ export const profile = {
     fetchApi<OrganizerProfileResponse>('/api/v1/user/profile/organizer'),
     
   createOrganizer: (data: CreateOrganizerProfileRequest) =>
-    fetchApi<OrganizerProfileResponse>('/api/v1/user/profile/organizer', {
+    fetchApi<OrganizerProfileWithTokenResponse>('/api/v1/user/profile/organizer', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

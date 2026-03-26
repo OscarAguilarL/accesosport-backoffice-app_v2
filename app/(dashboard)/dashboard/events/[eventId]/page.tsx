@@ -180,38 +180,59 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         </div>
       </div>
 
-      {/* Cover Image */}
-      {event.coverImageUrl && (
-        <div className="mb-6 overflow-hidden rounded-lg">
-          <img
-            src={event.coverImageUrl}
-            alt={event.name}
-            className="h-64 w-full object-cover"
-          />
+      {/* Thumbnail */}
+      <div className="mb-6 flex items-start gap-4">
+        <div className="w-40 h-40 shrink-0 overflow-hidden rounded-xl border bg-muted shadow-sm">
+          {event.coverImageUrl ? (
+            <img
+              src={event.coverImageUrl}
+              alt={event.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+          )}
         </div>
-      )}
+        <div className="flex flex-col gap-1 pt-1">
+          <span
+            className={`w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              statusInfo.variant === 'success'
+                ? 'bg-success/10 text-success'
+                : statusInfo.variant === 'destructive'
+                ? 'bg-destructive/10 text-destructive'
+                : statusInfo.variant === 'secondary'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'bg-primary/10 text-primary'
+            }`}
+          >
+            {statusInfo.label}
+          </span>
+          <h1 className="text-xl font-bold leading-tight">{event.name}</h1>
+          <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+            {event.eventDate && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {format(new Date(event.eventDate), "d 'de' MMMM 'de' yyyy", { locale: es })}
+              </span>
+            )}
+            {event.location?.city && (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {[event.location.city, event.location.country].filter(Boolean).join(', ')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Información General</CardTitle>
-                <span
-                  className={`rounded-full px-3 py-1 text-sm font-medium ${
-                    statusInfo.variant === 'success'
-                      ? 'bg-success/10 text-success'
-                      : statusInfo.variant === 'destructive'
-                      ? 'bg-destructive/10 text-destructive'
-                      : statusInfo.variant === 'secondary'
-                      ? 'bg-secondary text-secondary-foreground'
-                      : 'bg-primary/10 text-primary'
-                  }`}
-                >
-                  {statusInfo.label}
-                </span>
-              </div>
+              <CardTitle>Información General</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>

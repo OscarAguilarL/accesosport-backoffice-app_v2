@@ -8,16 +8,29 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { FieldGroup, Field, FieldLabel, FieldError } from '@/components/ui/field'
+import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
 import { events as eventsApi, ApiError } from '@/lib/api'
 import type { CreateEventRequest } from '@/lib/types'
-import { ArrowLeft, Calendar, MapPin, DollarSign, Users, Activity } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, DollarSign, Users, Activity, ImageIcon } from 'lucide-react'
+import { ImageDropzone } from '@/components/ui/image-dropzone'
+
+const STEPS = [
+  { title: 'Información Básica',     description: 'Datos generales del evento' },
+  { title: 'Fecha y Ubicación',      description: 'Cuándo y dónde se realizará' },
+  { title: 'Inscripciones y Precio', description: 'Configura el periodo y costos' },
+  { title: 'Imágenes',               description: 'Portada y galería del evento' },
+]
+
+type GalleryItem = { file: File; preview: string }
 
 export default function CreateEventPage() {
   const router = useRouter()
+  const [step, setStep] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null)
+
   const [formData, setFormData] = useState<CreateEventRequest>({
     name: '',
     description: '',
@@ -34,28 +47,84 @@ export default function CreateEventPage() {
     maxParticipants: undefined,
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
+
+  const updateFormData = (field: keyof CreateEventRequest, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleNext = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setStep((s) => s + 1)
+  }
+
+  const handleBack = () => {
+    setError(null)
+    setStep((s) => s - 1)
+  }
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-
     try {
       const event = await eventsApi.create(formData)
-      router.push(`/dashboard/events/${event.id}`)
+      setCreatedEventId(event.id!)
+      setStep(3)
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.detail || err.message)
-      } else {
-        setError('Error al crear el evento. Por favor intenta de nuevo.')
-      }
+      setError(err instanceof ApiError ? (err.detail || err.message) : 'Error al crear el evento. Por favor intenta de nuevo.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const updateFormData = (field: keyof CreateEventRequest, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCoverFile(file)
+    setCoverPreview(URL.createObjectURL(file))
   }
+
+  const removeCover = () => {
+    setCoverFile(null)
+    setCoverPreview(null)
+  }
+
+  const handleGalleryAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const newItems = files.map((file) => ({ file, preview: URL.createObjectURL(file) }))
+    setGalleryItems((prev) => [...prev, ...newItems])
+    e.target.value = ''
+  }
+
+  const removeGalleryItem = (index: number) => {
+    setGalleryItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleImagesSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createdEventId) return
+    setIsLoading(true)
+    setError(null)
+    try {
+      if (coverFile) {
+        await eventsApi.uploadCoverImage(createdEventId, coverFile)
+      }
+      for (const item of galleryItems) {
+        await eventsApi.addGalleryImage(createdEventId, item.file)
+      }
+      router.push(`/dashboard/events/${createdEventId}`)
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.detail || err.message) : 'Error al subir las imágenes.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const totalImages = (coverFile ? 1 : 0) + galleryItems.length
 
   return (
     <DashboardLayout title="Crear Nuevo Evento" description="Configura los detalles de tu evento deportivo">
@@ -67,22 +136,44 @@ export default function CreateEventPage() {
           </Link>
         </Button>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
-                {error}
+        {/* Step indicator */}
+        <div className="mb-8 flex items-center justify-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                  i < step
+                    ? 'bg-primary text-primary-foreground'
+                    : i === step
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {i < step ? '✓' : i + 1}
               </div>
-            )}
+              {i < STEPS.length - 1 && (
+                <div className={`h-px w-10 transition-colors ${i < step ? 'bg-primary' : 'bg-muted'}`} />
+              )}
+            </div>
+          ))}
+        </div>
 
-            {/* Basic Info */}
+        {error && (
+          <div className="mb-6 rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {/* Step 0: Basic Info */}
+        {step === 0 && (
+          <form onSubmit={handleNext}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5" />
-                  Información Básica
+                  {STEPS[0].title}
                 </CardTitle>
-                <CardDescription>Datos generales del evento</CardDescription>
+                <CardDescription>{STEPS[0].description}</CardDescription>
               </CardHeader>
               <CardContent>
                 <FieldGroup>
@@ -117,9 +208,7 @@ export default function CreateEventPage() {
                       <select
                         id="raceType"
                         value={formData.raceType}
-                        onChange={(e) =>
-                          updateFormData('raceType', e.target.value as CreateEventRequest['raceType'])
-                        }
+                        onChange={(e) => updateFormData('raceType', e.target.value as CreateEventRequest['raceType'])}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                         required
                       >
@@ -150,9 +239,7 @@ export default function CreateEventPage() {
                         <select
                           id="distanceUnit"
                           value={formData.distanceUnit}
-                          onChange={(e) =>
-                            updateFormData('distanceUnit', e.target.value as 'KM' | 'MI')
-                          }
+                          onChange={(e) => updateFormData('distanceUnit', e.target.value as 'KM' | 'MI')}
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                           required
                         >
@@ -162,18 +249,26 @@ export default function CreateEventPage() {
                       </Field>
                     </div>
                   </div>
+
+                  <div className="flex justify-end">
+                    <Button type="submit">Continuar</Button>
+                  </div>
                 </FieldGroup>
               </CardContent>
             </Card>
+          </form>
+        )}
 
-            {/* Date & Location */}
+        {/* Step 1: Date & Location */}
+        {step === 1 && (
+          <form onSubmit={handleNext}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
-                  Fecha y Ubicación
+                  {STEPS[1].title}
                 </CardTitle>
-                <CardDescription>Cuándo y dónde se realizará el evento</CardDescription>
+                <CardDescription>{STEPS[1].description}</CardDescription>
               </CardHeader>
               <CardContent>
                 <FieldGroup>
@@ -212,7 +307,6 @@ export default function CreateEventPage() {
                         placeholder="Ciudad de México"
                       />
                     </Field>
-
                     <Field>
                       <FieldLabel htmlFor="country">País</FieldLabel>
                       <Input
@@ -231,25 +325,20 @@ export default function CreateEventPage() {
                         id="latitude"
                         type="number"
                         value={formData.latitude || ''}
-                        onChange={(e) =>
-                          updateFormData('latitude', e.target.value ? parseFloat(e.target.value) : undefined)
-                        }
+                        onChange={(e) => updateFormData('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
                         placeholder="19.4326"
                         min={-90}
                         max={90}
                         step="any"
                       />
                     </Field>
-
                     <Field>
                       <FieldLabel htmlFor="longitude">Longitud</FieldLabel>
                       <Input
                         id="longitude"
                         type="number"
                         value={formData.longitude || ''}
-                        onChange={(e) =>
-                          updateFormData('longitude', e.target.value ? parseFloat(e.target.value) : undefined)
-                        }
+                        onChange={(e) => updateFormData('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
                         placeholder="-99.1332"
                         min={-180}
                         max={180}
@@ -257,26 +346,35 @@ export default function CreateEventPage() {
                       />
                     </Field>
                   </div>
+
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={handleBack}>
+                      Atrás
+                    </Button>
+                    <Button type="submit">Continuar</Button>
+                  </div>
                 </FieldGroup>
               </CardContent>
             </Card>
+          </form>
+        )}
 
-            {/* Registration & Pricing */}
+        {/* Step 2: Registration & Pricing — creates the event on submit */}
+        {step === 2 && (
+          <form onSubmit={handleCreateEvent}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Inscripciones y Precio
+                  {STEPS[2].title}
                 </CardTitle>
-                <CardDescription>Configura el periodo de inscripción y costos</CardDescription>
+                <CardDescription>{STEPS[2].description}</CardDescription>
               </CardHeader>
               <CardContent>
                 <FieldGroup>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field>
-                      <FieldLabel htmlFor="registrationStartDate">
-                        Inicio de Inscripciones *
-                      </FieldLabel>
+                      <FieldLabel htmlFor="registrationStartDate">Inicio de Inscripciones *</FieldLabel>
                       <Input
                         id="registrationStartDate"
                         type="datetime-local"
@@ -285,11 +383,8 @@ export default function CreateEventPage() {
                         required
                       />
                     </Field>
-
                     <Field>
-                      <FieldLabel htmlFor="registrationEndDate">
-                        Fin de Inscripciones *
-                      </FieldLabel>
+                      <FieldLabel htmlFor="registrationEndDate">Fin de Inscripciones *</FieldLabel>
                       <Input
                         id="registrationEndDate"
                         type="datetime-local"
@@ -316,48 +411,108 @@ export default function CreateEventPage() {
                         required
                       />
                     </Field>
-
                     <Field>
-                      <FieldLabel htmlFor="maxParticipants">
-                        Máximo de Participantes
-                      </FieldLabel>
+                      <FieldLabel htmlFor="maxParticipants">Máximo de Participantes</FieldLabel>
                       <Input
                         id="maxParticipants"
                         type="number"
                         value={formData.maxParticipants || ''}
-                        onChange={(e) =>
-                          updateFormData(
-                            'maxParticipants',
-                            e.target.value ? parseInt(e.target.value) : undefined
-                          )
-                        }
+                        onChange={(e) => updateFormData('maxParticipants', e.target.value ? parseInt(e.target.value) : undefined)}
                         placeholder="Sin límite"
                         min={1}
                       />
                     </Field>
                   </div>
+
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
+                      Atrás
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? (
+                        <><Spinner className="mr-2" /> Creando evento...</>
+                      ) : (
+                        'Crear y continuar'
+                      )}
+                    </Button>
+                  </div>
                 </FieldGroup>
               </CardContent>
             </Card>
+          </form>
+        )}
 
-            {/* Submit */}
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" asChild>
-                <Link href="/dashboard/events">Cancelar</Link>
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2" />
-                    Creando evento...
-                  </>
-                ) : (
-                  'Crear Evento'
-                )}
-              </Button>
+        {/* Step 3: Images */}
+        {step === 3 && (
+          <form onSubmit={handleImagesSubmit}>
+            <div className="space-y-6">
+
+              {/* Cover Image */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Imagen de Portada
+                  </CardTitle>
+                  <CardDescription>
+                    Imagen principal que representa tu evento (opcional)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-48">
+                    <ImageDropzone
+                      preview={coverPreview}
+                      onChange={(file) => { setCoverFile(file); setCoverPreview(URL.createObjectURL(file)) }}
+                      onRemove={removeCover}
+                      disabled={isLoading}
+                      className="h-48"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Gallery */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Galería de Imágenes
+                  </CardTitle>
+                  <CardDescription>
+                    Agrega fotos adicionales del evento o recorrido (opcional)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ImageDropzone
+                    multiple
+                    items={galleryItems}
+                    onAdd={(files) => setGalleryItems((prev) => [...prev, ...files.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))])}
+                    onRemove={removeGalleryItem}
+                    disabled={isLoading}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/dashboard/events/${createdEventId}`)}
+                  disabled={isLoading}
+                >
+                  Omitir y finalizar
+                </Button>
+                <Button type="submit" disabled={isLoading || totalImages === 0}>
+                  {isLoading ? (
+                    <><Spinner className="mr-2" /> Subiendo imágenes...</>
+                  ) : (
+                    `Subir ${totalImages} imagen${totalImages !== 1 ? 'es' : ''} y finalizar`
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </DashboardLayout>
   )

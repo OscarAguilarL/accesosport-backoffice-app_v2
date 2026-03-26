@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { profile as profileApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Bell, User, Settings, LogOut } from 'lucide-react'
 import Link from 'next/link'
 
@@ -21,6 +23,13 @@ interface HeaderProps {
 
 export function Header({ title, description }: HeaderProps) {
   const { user, logout } = useAuth()
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    profileApi.getOrganizer()
+      .then((p) => setLogoUrl(p.logoUrl ?? null))
+      .catch(() => setLogoUrl(null))
+  }, [])
 
   const initials = user?.firstName && user?.lastName
     ? `${user.firstName[0]}${user.lastName[0]}`
@@ -47,6 +56,7 @@ export function Header({ title, description }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
+                {logoUrl && <AvatarImage src={logoUrl} alt="Logo organización" />}
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {initials}
                 </AvatarFallback>
