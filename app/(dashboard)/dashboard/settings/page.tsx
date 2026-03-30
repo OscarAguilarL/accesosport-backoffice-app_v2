@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
-import { profile as profileApi } from '@/lib/api'
+import { ImageDropzone } from '@/components/ui/image-dropzone'
+import { profile as profileApi, ApiError } from '@/lib/api'
 import type { OrganizerProfileResponse } from '@/lib/types'
 import { Building2, Globe, Instagram, Facebook, Save } from 'lucide-react'
 
@@ -18,6 +19,8 @@ export default function SettingsPage() {
   const [organizerProfile, setOrganizerProfile] = useState<OrganizerProfileResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     organizationName: '',
     website: '',
@@ -51,12 +54,25 @@ export default function SettingsPage() {
     e.preventDefault()
     setIsSaving(true)
     try {
-      const data = await profileApi.createOrganizer(formData)
-      setOrganizerProfile(data)
+      const { profile } = await profileApi.createOrganizer(formData)
+      setOrganizerProfile(profile)
     } catch (error) {
       console.log('[v0] Error saving profile:', error)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleLogoChange = async (file: File) => {
+    setIsUploadingLogo(true)
+    setLogoError(null)
+    try {
+      const updated = await profileApi.uploadOrganizerLogo(file)
+      setOrganizerProfile(updated)
+    } catch (err) {
+      setLogoError(err instanceof ApiError ? (err.detail || err.message) : 'Error al subir el logo.')
+    } finally {
+      setIsUploadingLogo(false)
     }
   }
 
@@ -104,6 +120,27 @@ export default function SettingsPage() {
                 <Spinner className="h-6 w-6" />
               </div>
             ) : (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-center">Logo de la organización</p>
+                  <ImageDropzone
+                    preview={organizerProfile?.logoUrl ?? null}
+                    onChange={handleLogoChange}
+                    onRemove={undefined}
+                    disabled={isUploadingLogo}
+                    shape="circle"
+                    className="w-full"
+                  />
+                  {isUploadingLogo && (
+                    <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Spinner className="h-4 w-4" /> Subiendo logo...
+                    </p>
+                  )}
+                  {logoError && (
+                    <p className="text-center text-sm text-destructive">{logoError}</p>
+                  )}
+                </div>
+
               <form onSubmit={handleSubmit}>
                 <FieldGroup>
                   <Field>
@@ -211,6 +248,7 @@ export default function SettingsPage() {
                   </Button>
                 </FieldGroup>
               </form>
+              </div>
             )}
           </CardContent>
         </Card>
