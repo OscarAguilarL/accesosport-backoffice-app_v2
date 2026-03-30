@@ -103,6 +103,24 @@ export interface CreateEventRequest {
   maxParticipants?: number
 }
 
+export interface UpdateEventRequest {
+  name?: string
+  description?: string
+  eventDate?: string
+  place?: string
+  city?: string
+  country?: string
+  latitude?: number
+  longitude?: number
+  raceType?: 'MARATHON' | 'HALF_MARATHON' | 'TEN_KM' | 'FIVE_KM' | 'OTHER'
+  distance?: number
+  distanceUnit?: 'KM' | 'MI'
+  price?: number
+  registrationStartDate?: string
+  registrationEndDate?: string
+  maxParticipants?: number
+}
+
 export interface OrganizerProfileResponse {
   id?: string
   organizationName?: string

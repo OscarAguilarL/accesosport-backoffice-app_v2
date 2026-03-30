@@ -5,6 +5,7 @@ import type {
   EventResponse,
   EventSummaryResponse,
   CreateEventRequest,
+  UpdateEventRequest,
   OrganizerProfileResponse,
   OrganizerProfileWithTokenResponse,
   CreateOrganizerProfileRequest,
@@ -95,6 +96,12 @@ export const events = {
       body: JSON.stringify(data),
     }),
     
+  update: (eventId: string, data: UpdateEventRequest) =>
+    fetchApi<EventResponse>(`/api/v1/events/${eventId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   publish: (eventId: string) =>
     fetchApi<EventResponse>(`/api/v1/events/${eventId}/publish`, {
       method: 'PUT',
