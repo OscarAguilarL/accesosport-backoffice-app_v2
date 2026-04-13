@@ -111,7 +111,12 @@ export const events = {
     fetchApi<EventResponse>(`/api/v1/events/${eventId}/open-registration`, {
       method: 'PUT',
     }),
-    
+
+  complete: (eventId: string) =>
+    fetchApi<EventResponse>(`/api/v1/events/${eventId}/complete`, {
+      method: 'PUT',
+    }),
+
   cancel: (eventId: string, reason?: string) =>
     fetchApi<EventResponse>(`/api/v1/events/${eventId}/cancel${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`, {
       method: 'DELETE',

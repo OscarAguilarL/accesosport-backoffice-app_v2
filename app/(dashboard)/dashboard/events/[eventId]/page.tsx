@@ -31,6 +31,7 @@ import {
   Globe,
   Play,
   XCircle,
+  CheckCircle,
   Image as ImageIcon,
   Clock,
 } from 'lucide-react'
@@ -79,6 +80,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
       setEvent(updated)
     } catch (error) {
       console.log('[v0] Error opening registration:', error)
+    } finally {
+      setIsActionLoading(false)
+    }
+  }
+
+  const handleComplete = async () => {
+    if (!event?.id) return
+    setIsActionLoading(true)
+    try {
+      const updated = await eventsApi.complete(event.id)
+      setEvent(updated)
+    } catch (error) {
+      console.log('[v0] Error completing event:', error)
     } finally {
       setIsActionLoading(false)
     }
@@ -148,6 +162,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
               <Play className="mr-2 h-4 w-4" />
               Abrir Inscripciones
             </Button>
+          )}
+          {event.status === 'IN_PROGRESS' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={isActionLoading}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Completar Evento
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Completar este evento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    El evento será marcado como completado. Esta acción no se puede deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>No, volver</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleComplete}>
+                    Sí, completar evento
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <Button variant="outline" asChild>
             <Link href={`/dashboard/events/${eventId}/edit`}>
