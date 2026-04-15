@@ -68,7 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await authApi.login(data)
     localStorage.setItem('accessToken', response.token)
     setRoles(response.roles)
+    setIsLoading(true)
     await fetchUser()
+    setIsLoading(false)
     return response.roles
   }
 

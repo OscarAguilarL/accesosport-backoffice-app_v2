@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { getLastAuthPath } from '@/components/auth-route-tracker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -14,8 +15,15 @@ import { ApiError } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, isAuthenticated, isLoading: isAuthLoading, roles } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) {
+      const lastPath = getLastAuthPath()
+      router.replace(lastPath ?? (roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos'))
+    }
+  }, [isAuthenticated, isAuthLoading, roles, router])
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
