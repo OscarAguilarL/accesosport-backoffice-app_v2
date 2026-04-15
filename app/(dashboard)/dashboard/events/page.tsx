@@ -49,8 +49,10 @@ export default function EventsPage() {
 
   useEffect(() => {
     const fetchEvents = async () => {
+      setIsLoading(true)
       try {
-        const data = await eventsApi.listMyEvents()
+        const status = statusFilter !== 'all' ? statusFilter : undefined
+        const data = await eventsApi.list(status)
         setEvents(data)
         setFilteredEvents(data)
       } catch (error) {
@@ -60,7 +62,7 @@ export default function EventsPage() {
       }
     }
     fetchEvents()
-  }, [])
+  }, [statusFilter])
 
   useEffect(() => {
     let result = events
@@ -73,12 +75,8 @@ export default function EventsPage() {
       )
     }
 
-    if (statusFilter !== 'all') {
-      result = result.filter((event) => event.status === statusFilter)
-    }
-
     setFilteredEvents(result)
-  }, [searchQuery, statusFilter, events])
+  }, [searchQuery, events])
 
   const getStatusBadge = (status?: string) => {
     const statusInfo = EVENT_STATUS_LABELS[status || 'DRAFT']
@@ -133,10 +131,11 @@ export default function EventsPage() {
               <option value="all">Todos los estados</option>
               <option value="DRAFT">Borrador</option>
               <option value="PUBLISHED">Publicado</option>
-              <option value="OPEN_REGISTRATION">Inscripciones Abiertas</option>
-              <option value="CLOSED">Cerrado</option>
-              <option value="CANCELLED">Cancelado</option>
+              <option value="REGISTRATION_OPEN">Inscripciones Abiertas</option>
+              <option value="REGISTRATION_CLOSED">Inscripciones Cerradas</option>
+              <option value="IN_PROGRESS">En Curso</option>
               <option value="COMPLETED">Completado</option>
+              <option value="CANCELLED">Cancelado</option>
             </select>
           </div>
 

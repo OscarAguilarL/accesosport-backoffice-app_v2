@@ -81,8 +81,10 @@ export const auth = {
 
 // Events endpoints
 export const events = {
-  list: () =>
-    fetchApi<EventSummaryResponse[]>('/api/v1/events'),
+  list: (status?: EventSummaryResponse['status']) =>
+    fetchApi<EventSummaryResponse[]>(
+      status ? `/api/v1/events?eventStatus=${status}` : '/api/v1/events'
+    ),
     
   listMyEvents: () =>
     fetchApi<EventSummaryResponse[]>('/api/v1/events/my-events'),
