@@ -86,7 +86,10 @@ export const events = {
     
   listMyEvents: () =>
     fetchApi<EventSummaryResponse[]>('/api/v1/events/my-events'),
-    
+
+  listAvailable: () =>
+    fetchApi<EventSummaryResponse[]>('/api/v1/events/available'),
+
   get: (eventId: string) =>
     fetchApi<EventResponse>(`/api/v1/events/${eventId}`),
     
