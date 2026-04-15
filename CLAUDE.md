@@ -35,6 +35,9 @@ DELETE /api/v1/events/{id}/images/{imageId}      → 204                     (OR
 GET  /api/v1/user/profile/organizer              → OrganizerProfileResponse
 POST /api/v1/user/profile/organizer              → OrganizerProfileResponse
 PUT  /api/v1/user/profile/organizer/logo         → OrganizerProfileResponse (multipart)
+
+GET  /api/v1/user/profile/participant            → ParticipantProfileResponse
+POST /api/v1/user/profile/participant            → ParticipantProfileResponse
 ```
 
 ## Estados de evento (EventStatus)
@@ -61,3 +64,18 @@ Formato RFC 7807 ProblemDetail:
 - No usar `any` en TypeScript
 - Errores del API se manejan con la clase `ApiError` de `lib/api.ts`
 - Para multipart (imágenes) no pasar Content-Type header — el browser lo setea automáticamente
+
+## Portal de participante
+
+El mismo app sirve a organizadores y participantes mediante route groups separados:
+
+- `(dashboard)` → organizadores y admins: `/dashboard/**`
+- `(portal)` → participantes: `/eventos`, `/perfil`
+
+**Acceso:** Cualquier usuario autenticado puede acceder al portal (no hay restricción de rol en las rutas). El link al portal en el sidebar del dashboard es visible para todos los roles.
+
+**Redirección post-login:** Si el token contiene `ROLE_ORGANIZER` → `/dashboard`. En caso contrario → `/eventos`.
+
+**Capa de datos del portal:**
+- `lib/types.ts`: `ShirtSize`, `BloodType`, `ParticipantProfileResponse`, `CreateParticipantProfileRequest`
+- `lib/api.ts`: `profile.getParticipant()`, `profile.createParticipant(data)`

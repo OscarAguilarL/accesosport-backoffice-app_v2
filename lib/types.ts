@@ -212,3 +212,34 @@ export const EVENT_STATUS_LABELS: Record<string, { label: string; variant: 'defa
   COMPLETED: { label: 'Completado', variant: 'outline' },
   CANCELLED: { label: 'Cancelado', variant: 'destructive' },
 }
+
+export type ShirtSize = 'SIZE_XS' | 'SIZE_S' | 'SIZE_M' | 'SIZE_L' | 'SIZE_XL' | 'SIZE_XXL'
+
+export type BloodType =
+  | 'A_POSITIVE'
+  | 'A_NEGATIVE'
+  | 'B_POSITIVE'
+  | 'B_NEGATIVE'
+  | 'AB_POSITIVE'
+  | 'AB_NEGATIVE'
+  | 'O_POSITIVE'
+  | 'O_NEGATIVE'
+
+export interface ParticipantProfileResponse {
+  id?: string
+  shirtSize?: ShirtSize
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  medicalConditions?: string
+  bloodType?: BloodType
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateParticipantProfileRequest {
+  shirtSize: ShirtSize
+  emergencyContactName: string
+  emergencyContactPhone: string
+  medicalConditions?: string
+  bloodType: BloodType
+}

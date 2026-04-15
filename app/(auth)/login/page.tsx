@@ -28,8 +28,8 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      await login(formData)
-      router.push('/dashboard')
+      const roles = await login(formData)
+      router.push(roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos')
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.detail || err.message)

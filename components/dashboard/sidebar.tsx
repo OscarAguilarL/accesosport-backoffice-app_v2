@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   Menu,
   Zap,
+  Trophy,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -41,6 +42,11 @@ const navItems = [
     title: 'Configuración',
     href: '/dashboard/settings',
     icon: Settings,
+  },
+  {
+    title: 'Participar en carreras',
+    href: '/eventos',
+    icon: Trophy,
   },
 ]
 

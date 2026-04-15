@@ -6,10 +6,11 @@ import type { UserInformationDto, LoginRequest, RegisterRequest } from './types'
 
 interface AuthContextType {
   user: UserInformationDto | null
+  roles: string[]
   isLoading: boolean
   isAuthenticated: boolean
   needsOnboarding: boolean
-  login: (data: LoginRequest) => Promise<void>
+  login: (data: LoginRequest) => Promise<string[]>
   signup: (data: RegisterRequest) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -17,8 +18,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+function getRolesFromToken(token: string): string[] {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return Array.isArray(payload.roles) ? payload.roles : []
+  } catch {
+    return []
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInformationDto | null>(null)
+  const [roles, setRoles] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
 
@@ -27,15 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('accessToken')
       if (!token) {
         setUser(null)
+        setRoles([])
         setNeedsOnboarding(false)
         return
       }
+      setRoles(getRolesFromToken(token))
       const userData = await userApi.getMe()
       setUser(userData)
       setNeedsOnboarding(false)
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
-        // Token válido pero el usuario no ha completado su información personal
         setNeedsOnboarding(true)
         setUser(null)
         return
@@ -43,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
       setUser(null)
+      setRoles([])
       setNeedsOnboarding(false)
     }
   }, [])
@@ -51,10 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser().finally(() => setIsLoading(false))
   }, [fetchUser])
 
-  const login = async (data: LoginRequest) => {
+  const login = async (data: LoginRequest): Promise<string[]> => {
     const response = await authApi.login(data)
     localStorage.setItem('accessToken', response.token)
+    setRoles(response.roles)
     await fetchUser()
+    return response.roles
   }
 
   const signup = async (data: RegisterRequest) => {
@@ -66,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('accessToken')
     setUser(null)
+    setRoles([])
   }
 
   const refreshUser = async () => {
@@ -76,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        roles,
         isLoading,
         isAuthenticated: !!user,
         needsOnboarding,
