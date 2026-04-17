@@ -243,3 +243,20 @@ export interface CreateParticipantProfileRequest {
   medicalConditions?: string
   bloodType: BloodType
 }
+
+export interface ParticipantInEventResponse {
+  registrationId: string
+  participantId: string
+  fullName: string | null
+  email: string | null
+  shirtSize: string | null
+  bloodType: string | null
+  medicalConditions?: string | null
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  status: string
+  ticketCode: string
+  bibNumber: number | null
+  kitPickedUp: boolean
+  registeredAt: string
+}

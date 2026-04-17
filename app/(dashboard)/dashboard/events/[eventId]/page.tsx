@@ -18,8 +18,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { events as eventsApi } from '@/lib/api'
-import type { EventResponse } from '@/lib/types'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
+import { events as eventsApi, registrations as registrationsApi } from '@/lib/api'
+import type { EventResponse, ParticipantInEventResponse } from '@/lib/types'
 import { EVENT_STATUS_LABELS, RACE_TYPES } from '@/lib/types'
 import {
   ArrowLeft,
@@ -34,9 +43,34 @@ import {
   CheckCircle,
   Image as ImageIcon,
   Clock,
+  Download,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+const PARTICIPANTS_STATUSES = new Set(['REGISTRATION_OPEN', 'REGISTRATION_CLOSED', 'IN_PROGRESS', 'COMPLETED'])
+
+const REGISTRATION_STATUS_LABELS: Record<string, string> = {
+  PENDING_PAYMENT: 'Pago pendiente',
+  CONFIRMED: 'Confirmado',
+  CANCELLED: 'Cancelado',
+}
+
+function exportToCSV(participants: ParticipantInEventResponse[], eventName: string) {
+  const headers = ['Nombre', 'Email', 'Talla', 'Sangre', 'Contacto emergencia', 'Tel. emergencia', 'Estado']
+  const rows = participants.map(p => [
+    p.fullName, p.email, p.shirtSize, p.bloodType,
+    p.emergencyContactName, p.emergencyContactPhone, p.status
+  ])
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `inscritos-${eventName}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params)
@@ -44,12 +78,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const [event, setEvent] = useState<EventResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isActionLoading, setIsActionLoading] = useState(false)
+  const [participants, setParticipants] = useState<ParticipantInEventResponse[]>([])
+  const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         const data = await eventsApi.get(eventId)
         setEvent(data)
+        if (data.status && PARTICIPANTS_STATUSES.has(data.status)) {
+          setIsLoadingParticipants(true)
+          try {
+            const list = await registrationsApi.getByEvent(eventId)
+            setParticipants(list)
+          } catch (error) {
+            console.log('[v0] Error fetching participants:', error)
+          } finally {
+            setIsLoadingParticipants(false)
+          }
+        }
       } catch (error) {
         console.log('[v0] Error fetching event:', error)
       } finally {
@@ -453,6 +500,95 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
           </Card>
         </div>
       </div>
+
+      {/* Participants Section */}
+      {event.status && PARTICIPANTS_STATUSES.has(event.status) && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Participantes inscritos
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {participants.length} / {event.maxParticipants ?? '∞'}
+                    </span>
+                  </CardTitle>
+                </div>
+                {participants.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportToCSV(participants, event.name ?? 'evento')}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar CSV
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingParticipants ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Spinner className="h-6 w-6" />
+                </div>
+              ) : participants.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Users />
+                    </EmptyMedia>
+                    <EmptyTitle>Sin inscritos</EmptyTitle>
+                    <EmptyDescription>Aún no hay participantes inscritos en este evento.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nombre completo</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Talla</TableHead>
+                      <TableHead>Grupo sanguíneo</TableHead>
+                      <TableHead>Contacto de emergencia</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Fecha de inscripción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {participants.map((p) => (
+                      <TableRow key={p.registrationId}>
+                        <TableCell className="font-medium">{p.fullName}</TableCell>
+                        <TableCell>{p.email}</TableCell>
+                        <TableCell>{p.shirtSize}</TableCell>
+                        <TableCell>{p.bloodType}</TableCell>
+                        <TableCell>
+                          {p.emergencyContactName} — {p.emergencyContactPhone}
+                        </TableCell>
+                        <TableCell>
+                          <span className={
+                            p.status === 'CONFIRMED'
+                              ? 'text-success font-medium'
+                              : p.status === 'CANCELLED'
+                              ? 'text-destructive font-medium'
+                              : 'text-muted-foreground'
+                          }>
+                            {REGISTRATION_STATUS_LABELS[p.status] ?? p.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(p.registeredAt), "d MMM yyyy, HH:mm", { locale: es })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </DashboardLayout>
   )
 }
