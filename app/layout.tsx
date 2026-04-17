@@ -5,13 +5,12 @@ import { AuthProvider } from '@/lib/auth-context'
 import { AuthRouteTracker } from '@/components/auth-route-tracker'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'AccesoSport - Gestión de Eventos Deportivos',
-  description: 'Plataforma de backoffice para gestionar eventos deportivos, carreras y maratones',
-  generator: 'v0.app',
+  title: 'AccesoSport — Carreras y eventos atléticos',
+  description: 'Encuentra tu próxima carrera, inscríbete y gestiona tus eventos deportivos.',
   icons: {
     icon: [
       {
@@ -38,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark">
-      <body className="font-sans antialiased">
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         <AuthProvider>
           <AuthRouteTracker />
           {children}
