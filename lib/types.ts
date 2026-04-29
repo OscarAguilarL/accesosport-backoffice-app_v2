@@ -79,10 +79,22 @@ export interface EventSummaryResponse {
   eventDate?: string
   location?: string
   distance?: string
+  raceType?: string
   price?: number
   registrationsAvailable?: number
   status?: string
   canRegister?: boolean
+  coverImageUrl?: string
+}
+
+export interface RegistrationResponse {
+  id: string
+  eventId: string
+  eventName: string | null
+  eventDate: string | null
+  status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED'
+  ticketCode: string
+  registeredAt: string
 }
 
 export interface CreateEventRequest {

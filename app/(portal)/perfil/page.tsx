@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { profile as profileApi, ApiError } from '@/lib/api'
 import type { CreateParticipantProfileRequest, ShirtSize, BloodType } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -41,6 +43,8 @@ const EMPTY_FORM: CreateParticipantProfileRequest = {
 }
 
 export default function PerfilPage() {
+  const router = useRouter()
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [formData, setFormData] = useState<CreateParticipantProfileRequest>(EMPTY_FORM)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -48,6 +52,13 @@ export default function PerfilPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push('/login?redirect=/perfil')
+    }
+  }, [isAuthenticated, isAuthLoading, router])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
     profileApi
       .getParticipant()
       .then((data) => {

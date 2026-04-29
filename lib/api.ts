@@ -15,6 +15,7 @@ import type {
   ParticipantProfileResponse,
   CreateParticipantProfileRequest,
   ParticipantInEventResponse,
+  RegistrationResponse,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -236,6 +237,19 @@ export const profile = {
 export const registrations = {
   getByEvent: (eventId: string) =>
     fetchApi<ParticipantInEventResponse[]>(`/api/v1/events/${eventId}/registrations`),
+
+  register: (eventId: string) =>
+    fetchApi<RegistrationResponse>(`/api/v1/events/${eventId}/register`, {
+      method: 'POST',
+    }),
+
+  cancel: (eventId: string, registrationId: string) =>
+    fetchApi<void>(`/api/v1/events/${eventId}/registrations/${registrationId}`, {
+      method: 'DELETE',
+    }),
+
+  getMyRegistrations: () =>
+    fetchApi<RegistrationResponse[]>('/api/v1/user/registrations'),
 }
 
 export { ApiError }

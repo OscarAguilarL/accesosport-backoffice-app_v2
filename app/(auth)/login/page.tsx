@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getLastAuthPath } from '@/components/auth-route-tracker'
 import { Button } from '@/components/ui/button'
@@ -15,15 +15,17 @@ import { ApiError } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const { login, isAuthenticated, isLoading: isAuthLoading, roles } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
-      const lastPath = getLastAuthPath()
-      router.replace(lastPath ?? (roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos'))
+      const destination = redirectTo || getLastAuthPath() || (roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos')
+      router.replace(destination)
     }
-  }, [isAuthenticated, isAuthLoading, roles, router])
+  }, [isAuthenticated, isAuthLoading, roles, router, redirectTo])
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
@@ -37,7 +39,8 @@ export default function LoginPage() {
 
     try {
       const roles = await login(formData)
-      router.push(roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos')
+      const destination = redirectTo || (roles.includes('ROLE_ORGANIZER') ? '/dashboard' : '/eventos')
+      router.push(destination)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.detail || err.message)

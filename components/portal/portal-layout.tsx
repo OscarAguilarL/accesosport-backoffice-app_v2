@@ -1,23 +1,15 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { Zap, LogOut } from 'lucide-react'
+import { Zap, LogOut, LogIn } from 'lucide-react'
 
 export function PortalLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
   const pathname = usePathname()
   const { isAuthenticated, isLoading, user, logout } = useAuth()
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, isLoading, router])
 
   if (isLoading) {
     return (
@@ -28,10 +20,6 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     )
-  }
-
-  if (!isAuthenticated) {
-    return null
   }
 
   return (
@@ -49,40 +37,65 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
               <Link
                 href="/eventos"
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
-                  pathname === '/eventos'
+                  pathname?.startsWith('/eventos')
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground'
                 }`}
               >
                 Eventos
               </Link>
-              <Link
-                href="/perfil"
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
-                  pathname === '/perfil'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground'
-                }`}
-              >
-                Mi perfil
-              </Link>
+              {isAuthenticated && (
+                <Link
+                  href="/mis-inscripciones"
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                    pathname === '/mis-inscripciones'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  Mis inscripciones
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link
+                  href="/perfil"
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                    pathname === '/perfil'
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  Mi perfil
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            {user && (
-              <span className="text-sm text-muted-foreground">
-                {user.firstName || user.email}
-              </span>
+            {isAuthenticated ? (
+              <>
+                {user && (
+                  <span className="text-sm text-muted-foreground">
+                    {user.firstName || user.email}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Salir
+                </Button>
+              </>
+            ) : (
+              <Button variant="default" size="sm" asChild>
+                <Link href="/login" className="gap-2 flex items-center">
+                  <LogIn className="h-4 w-4" />
+                  Iniciar sesión
+                </Link>
+              </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </Button>
           </div>
         </div>
       </header>
