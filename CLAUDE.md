@@ -1,6 +1,6 @@
 # Accesosport Backoffice
 
-Next.js 15 (App Router) + TypeScript + Tailwind CSS + shadcn/ui.
+Next.js 16.2.0 (App Router) + TypeScript + Tailwind CSS + shadcn/ui.
 UI generada con v0.dev, conectada a un backend Spring Boot 3.4.4.
 
 ## Backend
@@ -18,14 +18,19 @@ UI generada con v0.dev, conectada a un backend Spring Boot 3.4.4.
 POST /auth/login           → { id, email, roles, token }
 POST /auth/signup          → { id, email, roles, token }
 
-GET  /api/v1/user/me       → UserInformationDto
+GET  /api/v1/user/me                             → UserInformationDto
+PUT  /api/v1/user/personal-information           → 204
+PUT  /api/v1/user/address                        → 204
 
-GET  /api/v1/events                              → EventSummaryResponse[]
+GET  /api/v1/events                              → EventSummaryResponse[]  (acepta ?eventStatus=)
+GET  /api/v1/events/available                    → EventSummaryResponse[]  (estado REGISTRATION_OPEN)
 GET  /api/v1/events/{id}                         → EventResponse
-GET  /api/v1/events/my-events                    → EventSummaryResponse[]  (auth)
+GET  /api/v1/events/my-events                    → EventSummaryResponse[]  (ORGANIZER/ADMIN)
 POST /api/v1/events                              → EventResponse           (ORGANIZER/ADMIN)
+PATCH /api/v1/events/{id}                        → EventResponse           (ORGANIZER/ADMIN, solo en DRAFT)
 PUT  /api/v1/events/{id}/publish                 → EventResponse           (ORGANIZER/ADMIN)
 PUT  /api/v1/events/{id}/open-registration       → EventResponse           (ORGANIZER/ADMIN)
+PUT  /api/v1/events/{id}/complete                → EventResponse           (ORGANIZER/ADMIN)
 DELETE /api/v1/events/{id}/cancel?reason=...     → EventResponse           (ORGANIZER/ADMIN)
 PUT  /api/v1/events/{id}/cover-image             → EventResponse           (multipart, ORGANIZER/ADMIN)
 POST /api/v1/events/{id}/images                  → EventImageResponse      (multipart, ORGANIZER/ADMIN)
@@ -33,11 +38,18 @@ GET  /api/v1/events/{id}/images                  → EventImageResponse[]
 DELETE /api/v1/events/{id}/images/{imageId}      → 204                     (ORGANIZER/ADMIN)
 
 GET  /api/v1/user/profile/organizer              → OrganizerProfileResponse
-POST /api/v1/user/profile/organizer              → OrganizerProfileResponse
+POST /api/v1/user/profile/organizer              → OrganizerProfileWithTokenResponse (emite nuevo JWT con rol)
 PUT  /api/v1/user/profile/organizer/logo         → OrganizerProfileResponse (multipart)
 
 GET  /api/v1/user/profile/participant            → ParticipantProfileResponse
 POST /api/v1/user/profile/participant            → ParticipantProfileResponse
+
+POST /api/v1/events/{id}/register                → RegistrationResponse    (PARTICIPANT)
+DELETE /api/v1/events/{id}/registrations/{rid}   → RegistrationResponse    (PARTICIPANT cancela la suya; ORGANIZER/ADMIN cancela cualquiera)
+GET  /api/v1/events/{id}/registrations           → ParticipantInEventResponse[]  (ORGANIZER/ADMIN)
+GET  /api/v1/user/registrations                  → RegistrationResponse[]  (PARTICIPANT)
+GET  /api/v1/registrations/{ticketCode}          → RegistrationResponse    (ORGANIZER/ADMIN, check-in presencial)
+PUT  /api/v1/registrations/{ticketCode}/kit-pickup → RegistrationResponse  (ORGANIZER/ADMIN, entrega de kit)
 ```
 
 ## Estados de evento (EventStatus)
@@ -77,5 +89,17 @@ El mismo app sirve a organizadores y participantes mediante route groups separad
 **Redirección post-login:** Si el token contiene `ROLE_ORGANIZER` → `/dashboard`. En caso contrario → `/eventos`.
 
 **Capa de datos del portal:**
-- `lib/types.ts`: `ShirtSize`, `BloodType`, `ParticipantProfileResponse`, `CreateParticipantProfileRequest`
-- `lib/api.ts`: `profile.getParticipant()`, `profile.createParticipant(data)`
+- `lib/types.ts`: `ShirtSize`, `BloodType`, `ParticipantProfileResponse`, `CreateParticipantProfileRequest`, `RegistrationResponse`, `ParticipantInEventResponse`
+- `lib/api.ts`:
+  - `profile.getParticipant()`, `profile.createParticipant(data)`
+  - `events.listAvailable()` — eventos con inscripciones abiertas
+  - `registrations.register(eventId)` — inscribirse a un evento
+  - `registrations.cancel(eventId, registrationId)` — cancelar propia inscripción
+  - `registrations.getMyRegistrations()` — historial de inscripciones del participante
+
+**Rutas del portal:**
+- `/eventos` — catálogo público
+- `/eventos/[eventId]` — detalle del evento con botón de inscripción
+- `/eventos/[eventId]/inscribirse` — confirmación de inscripción
+- `/mis-inscripciones` — historial de inscripciones del participante
+- `/perfil` — datos personales del participante
