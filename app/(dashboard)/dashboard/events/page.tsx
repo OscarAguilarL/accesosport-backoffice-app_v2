@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { events as eventsApi } from '@/lib/api'
 import type { EventSummaryResponse } from '@/lib/types'
@@ -145,14 +145,15 @@ export default function EventsPage() {
               <Spinner className="h-8 w-8" />
             </div>
           ) : filteredEvents.length === 0 ? (
-            <Empty
-              title="No se encontraron eventos"
-              description={
-                events.length === 0
-                  ? 'Crea tu primer evento para comenzar'
-                  : 'Intenta ajustar los filtros de búsqueda'
-              }
-            >
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>No se encontraron eventos</EmptyTitle>
+                <EmptyDescription>
+                  {events.length === 0
+                    ? 'Crea tu primer evento para comenzar'
+                    : 'Intenta ajustar los filtros de búsqueda'}
+                </EmptyDescription>
+              </EmptyHeader>
               {events.length === 0 && (
                 <Button asChild className="mt-4">
                   <Link href="/dashboard/events/new">
@@ -170,8 +171,7 @@ export default function EventsPage() {
                     <TableHead>Evento</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Ubicación</TableHead>
-                    <TableHead>Distancia</TableHead>
-                    <TableHead>Precio</TableHead>
+                    <TableHead>Precio desde</TableHead>
                     <TableHead>Plazas</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -202,14 +202,17 @@ export default function EventsPage() {
                           {event.location || '-'}
                         </div>
                       </TableCell>
-                      <TableCell>{event.distance || '-'}</TableCell>
                       <TableCell>
-                        {event.price !== undefined ? `$${event.price.toFixed(2)}` : '-'}
+                        {event.minPrice !== undefined
+                          ? event.minPrice === 0
+                            ? 'Gratis'
+                            : `$${event.minPrice.toFixed(2)}`
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          {event.registrationsAvailable ?? '-'}
+                          {event.totalAvailableSpots ?? '-'}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(event.status)}</TableCell>

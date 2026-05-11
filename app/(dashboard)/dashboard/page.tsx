@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const stats = {
     totalEvents: myEvents.length,
     activeEvents: myEvents.filter(e => e.status === 'OPEN_REGISTRATION' || e.status === 'PUBLISHED').length,
-    totalRegistrations: myEvents.reduce((acc, e) => acc + (e.registrationsAvailable || 0), 0),
+    totalRegistrations: myEvents.reduce((acc, e) => acc + (e.totalAvailableSpots || 0), 0),
     upcomingEvents: myEvents.filter(e => e.eventDate && new Date(e.eventDate) > new Date()).length,
   }
 
@@ -153,7 +153,11 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium">{event.distance}</span>
+                        {event.minPrice !== undefined && (
+                          <span className="text-sm font-medium">
+                            {event.minPrice === 0 ? 'Gratis' : `Desde $${event.minPrice.toFixed(2)}`}
+                          </span>
+                        )}
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-medium ${
                             statusInfo.variant === 'success'

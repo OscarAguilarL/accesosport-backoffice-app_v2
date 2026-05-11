@@ -4,11 +4,9 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { events as eventsApi, ApiError } from '@/lib/api'
 import type { EventSummaryResponse } from '@/lib/types'
-import { RACE_TYPES } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { CalendarDays, MapPin, Users, ArrowRight } from 'lucide-react'
 
@@ -36,7 +34,6 @@ export default function EventosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [raceTypeFilter, setRaceTypeFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
@@ -56,9 +53,6 @@ export default function EventosPage() {
 
   const filteredEvents = useMemo(() => {
     return eventList.filter((event) => {
-      if (raceTypeFilter !== 'all' && event.raceType && event.raceType !== raceTypeFilter) {
-        return false
-      }
       if (dateFrom && event.eventDate) {
         if (new Date(event.eventDate) < new Date(dateFrom)) return false
       }
@@ -67,7 +61,7 @@ export default function EventosPage() {
       }
       return true
     })
-  }, [eventList, raceTypeFilter, dateFrom, dateTo])
+  }, [eventList, dateFrom, dateTo])
 
   if (isLoading) {
     return (
@@ -92,21 +86,7 @@ export default function EventosPage() {
         <p className="text-muted-foreground">Encuentra tu próxima carrera</p>
       </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Select value={raceTypeFilter} onValueChange={setRaceTypeFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Tipo de carrera" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los tipos</SelectItem>
-            {Object.entries(RACE_TYPES).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+      <div className="mb-6 grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted-foreground">Fecha desde</label>
           <Input
@@ -139,7 +119,6 @@ export default function EventosPage() {
               variant="outline"
               size="sm"
               onClick={() => {
-                setRaceTypeFilter('all')
                 setDateFrom('')
                 setDateTo('')
               }}
@@ -175,22 +154,17 @@ export default function EventosPage() {
                     <span>{event.location}</span>
                   </div>
                 )}
-                {event.registrationsAvailable !== undefined && (
+                {event.totalAvailableSpots !== undefined && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Users className="h-4 w-4 flex-shrink-0" />
-                    <span>{event.registrationsAvailable} lugares disponibles</span>
+                    <span>{event.totalAvailableSpots} lugares disponibles</span>
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between pt-2">
                   <div>
                     <span className="text-lg font-semibold">
-                      {formatPrice(event.price)}
+                      {formatPrice(event.minPrice)}
                     </span>
-                    {event.distance && (
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        · {event.distance}
-                      </span>
-                    )}
                   </div>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/eventos/${event.id}`} className="gap-1 flex items-center">

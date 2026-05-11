@@ -58,13 +58,8 @@ export interface EventResponse {
   description?: string
   eventDate?: string
   location?: LocationDto
-  raceType?: string
-  Distance?: string
-  price?: number
+  modalities?: EventModalityResponse[]
   registrationPeriod?: RegistrationPeriodDto
-  maxParticipants?: number
-  registeredParticipants?: number
-  registrationsAvailable?: number
   status?: string
   canRegister?: boolean
   organizer?: OrganizerDto
@@ -78,10 +73,8 @@ export interface EventSummaryResponse {
   name?: string
   eventDate?: string
   location?: string
-  distance?: string
-  raceType?: string
-  price?: number
-  registrationsAvailable?: number
+  minPrice?: number
+  totalAvailableSpots?: number
   status?: string
   canRegister?: boolean
   coverImageUrl?: string
@@ -106,13 +99,9 @@ export interface CreateEventRequest {
   country?: string
   latitude?: number
   longitude?: number
-  raceType: 'MARATHON' | 'HALF_MARATHON' | 'TEN_KM' | 'FIVE_KM' | 'OTHER'
-  distance: number
-  distanceUnit: 'KM' | 'MI'
-  price: number
   registrationStartDate: string
   registrationEndDate: string
-  maxParticipants?: number
+  modalities: CreateModalityRequest[]
 }
 
 export interface UpdateEventRequest {
@@ -124,13 +113,8 @@ export interface UpdateEventRequest {
   country?: string
   latitude?: number
   longitude?: number
-  raceType?: 'MARATHON' | 'HALF_MARATHON' | 'TEN_KM' | 'FIVE_KM' | 'OTHER'
-  distance?: number
-  distanceUnit?: 'KM' | 'MI'
-  price?: number
   registrationStartDate?: string
   registrationEndDate?: string
-  maxParticipants?: number
 }
 
 export interface OrganizerProfileResponse {
@@ -260,6 +244,26 @@ export interface CreateParticipantProfileRequest {
   bloodType: BloodType
   phone: string
   gender: Gender
+}
+
+export interface EventModalityResponse {
+  id: string
+  eventId: string
+  name: string
+  distance: number
+  distanceUnit: 'KM' | 'MI'
+  price: number
+  capacity: number
+  registeredCount: number
+  availableSpots: number
+}
+
+export interface CreateModalityRequest {
+  name: string
+  distance: number
+  distanceUnit: 'KM' | 'MI'
+  price: number
+  capacity: number
 }
 
 export interface ParticipantInEventResponse {

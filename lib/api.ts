@@ -16,6 +16,8 @@ import type {
   CreateParticipantProfileRequest,
   ParticipantInEventResponse,
   RegistrationResponse,
+  EventModalityResponse,
+  CreateModalityRequest,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/proxy'
@@ -239,14 +241,32 @@ export const profile = {
     }),
 }
 
+// Modalities endpoints
+export const modalities = {
+  list: (eventId: string) =>
+    fetchApi<EventModalityResponse[]>(`/api/v1/events/${eventId}/modalities`),
+
+  create: (eventId: string, data: CreateModalityRequest) =>
+    fetchApi<EventModalityResponse>(`/api/v1/events/${eventId}/modalities`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (eventId: string, modalityId: string) =>
+    fetchApi<void>(`/api/v1/events/${eventId}/modalities/${modalityId}`, {
+      method: 'DELETE',
+    }),
+}
+
 // Registrations endpoints
 export const registrations = {
   getByEvent: (eventId: string) =>
     fetchApi<ParticipantInEventResponse[]>(`/api/v1/events/${eventId}/registrations`),
 
-  register: (eventId: string) =>
+  register: (eventId: string, modalityId?: string) =>
     fetchApi<RegistrationResponse>(`/api/v1/events/${eventId}/register`, {
       method: 'POST',
+      body: modalityId ? JSON.stringify({ modalityId }) : undefined,
     }),
 
   cancel: (eventId: string, registrationId: string) =>

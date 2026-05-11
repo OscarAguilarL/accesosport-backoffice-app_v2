@@ -13,27 +13,13 @@ import { Spinner } from '@/components/ui/spinner'
 import { ImageDropzone } from '@/components/ui/image-dropzone'
 import { events as eventsApi, ApiError } from '@/lib/api'
 import type { UpdateEventRequest, EventResponse, EventImageResponse } from '@/lib/types'
-import { RACE_TYPES } from '@/lib/types'
-import { ArrowLeft, Activity, Calendar, MapPin, Users, DollarSign, ImageIcon, X } from 'lucide-react'
+import { ArrowLeft, Activity, Calendar, MapPin, Users, ImageIcon, X } from 'lucide-react'
 
 type GalleryItem = { file: File; preview: string }
 
 function toDatetimeLocalValue(iso?: string): string {
   if (!iso) return ''
   return iso.slice(0, 16)
-}
-
-// The API returns raceType as a display label (e.g. "10K"), but the PATCH endpoint expects the enum key (e.g. "TEN_KM")
-const DISPLAY_TO_ENUM = Object.fromEntries(
-  Object.entries(RACE_TYPES).map(([key, label]) => [label, key])
-) as Record<string, UpdateEventRequest['raceType']>
-
-function toRaceTypeEnum(value?: string): UpdateEventRequest['raceType'] {
-  if (!value) return undefined
-  // Already an enum key
-  if (value in RACE_TYPES) return value as UpdateEventRequest['raceType']
-  // Display label → enum key
-  return DISPLAY_TO_ENUM[value]
 }
 
 export default function EditEventPage({ params }: { params: Promise<{ eventId: string }> }) {
@@ -70,11 +56,8 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
           country: data.location?.country,
           latitude: data.location?.latitude,
           longitude: data.location?.longitude,
-          raceType: toRaceTypeEnum(data.raceType),
-          price: data.price,
           registrationStartDate: toDatetimeLocalValue(data.registrationPeriod?.start),
           registrationEndDate: toDatetimeLocalValue(data.registrationPeriod?.end),
-          maxParticipants: data.maxParticipants,
         })
       })
       .catch((err) => {
@@ -200,51 +183,6 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
                     maxLength={2000}
                   />
                 </Field>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="raceType">Tipo de Carrera</FieldLabel>
-                    <select
-                      id="raceType"
-                      value={formData.raceType ?? ''}
-                      onChange={(e) => update('raceType', e.target.value as UpdateEventRequest['raceType'])}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="MARATHON">Maratón</option>
-                      <option value="HALF_MARATHON">Medio Maratón</option>
-                      <option value="TEN_KM">10K</option>
-                      <option value="FIVE_KM">5K</option>
-                      <option value="OTHER">Otro</option>
-                    </select>
-                  </Field>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field>
-                      <FieldLabel htmlFor="distance">Distancia</FieldLabel>
-                      <Input
-                        id="distance"
-                        type="number"
-                        value={formData.distance ?? ''}
-                        onChange={(e) => update('distance', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        min={0.01}
-                        max={300}
-                        step={0.01}
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="distanceUnit">Unidad</FieldLabel>
-                      <select
-                        id="distanceUnit"
-                        value={formData.distanceUnit ?? 'KM'}
-                        onChange={(e) => update('distanceUnit', e.target.value as 'KM' | 'MI')}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="KM">KM</option>
-                        <option value="MI">Millas</option>
-                      </select>
-                    </Field>
-                  </div>
-                </div>
               </FieldGroup>
             </CardContent>
           </Card>
@@ -336,14 +274,14 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
             </CardContent>
           </Card>
 
-          {/* Registration & Pricing */}
+          {/* Registration Period */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Inscripciones y Precio
+                Periodo de Inscripciones
               </CardTitle>
-              <CardDescription>Periodo de registro y costos</CardDescription>
+              <CardDescription>Cuándo estarán abiertas las inscripciones</CardDescription>
             </CardHeader>
             <CardContent>
               <FieldGroup>
@@ -364,34 +302,6 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
                       type="datetime-local"
                       value={formData.registrationEndDate ?? ''}
                       onChange={(e) => update('registrationEndDate', e.target.value)}
-                    />
-                  </Field>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="price">
-                      <DollarSign className="mr-2 inline h-4 w-4" />
-                      Precio de Inscripción
-                    </FieldLabel>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price ?? ''}
-                      onChange={(e) => update('price', e.target.value ? parseFloat(e.target.value) : undefined)}
-                      min={0}
-                      step={0.01}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="maxParticipants">Máximo de Participantes</FieldLabel>
-                    <Input
-                      id="maxParticipants"
-                      type="number"
-                      value={formData.maxParticipants ?? ''}
-                      onChange={(e) => update('maxParticipants', e.target.value ? parseInt(e.target.value) : undefined)}
-                      placeholder="Sin límite"
-                      min={1}
                     />
                   </Field>
                 </div>

@@ -27,9 +27,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { events as eventsApi, registrations as registrationsApi } from '@/lib/api'
-import type { EventResponse, ParticipantInEventResponse } from '@/lib/types'
-import { EVENT_STATUS_LABELS, RACE_TYPES } from '@/lib/types'
+import { events as eventsApi, registrations as registrationsApi, modalities as modalitiesApi, ApiError } from '@/lib/api'
+import type { EventResponse, ParticipantInEventResponse, EventModalityResponse, CreateModalityRequest } from '@/lib/types'
+import { EVENT_STATUS_LABELS } from '@/lib/types'
+import { Input } from '@/components/ui/input'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import {
   ArrowLeft,
   Calendar,
@@ -45,6 +47,8 @@ import {
   Clock,
   Download,
   ScanLine,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -81,12 +85,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [participants, setParticipants] = useState<ParticipantInEventResponse[]>([])
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
+  const [eventModalities, setEventModalities] = useState<EventModalityResponse[]>([])
+  const [showModalityForm, setShowModalityForm] = useState(false)
+  const [modalityForm, setModalityForm] = useState<CreateModalityRequest>({ name: '', distance: 0, distanceUnit: 'KM', price: 0, capacity: 100 })
+  const [isSavingModality, setIsSavingModality] = useState(false)
+  const [modalityError, setModalityError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const data = await eventsApi.get(eventId)
+        const [data, mods] = await Promise.all([
+          eventsApi.get(eventId),
+          modalitiesApi.list(eventId).catch(() => [] as EventModalityResponse[]),
+        ])
         setEvent(data)
+        setEventModalities(mods)
         if (data.status && PARTICIPANTS_STATUSES.has(data.status)) {
           setIsLoadingParticipants(true)
           try {
@@ -106,6 +119,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     }
     fetchEvent()
   }, [eventId])
+
+  const handleAddModality = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingModality(true)
+    setModalityError(null)
+    try {
+      const created = await modalitiesApi.create(eventId, modalityForm)
+      setEventModalities((prev) => [...prev, created])
+      setModalityForm({ name: '', distance: 0, distanceUnit: 'KM', price: 0, capacity: 100 })
+      setShowModalityForm(false)
+    } catch (err) {
+      setModalityError(err instanceof ApiError ? (err.detail || err.message) : 'Error al crear la modalidad.')
+    } finally {
+      setIsSavingModality(false)
+    }
+  }
+
+  const handleDeleteModality = async (modalityId: string) => {
+    try {
+      await modalitiesApi.delete(eventId, modalityId)
+      setEventModalities((prev) => prev.filter((m) => m.id !== modalityId))
+    } catch (err) {
+      alert(err instanceof ApiError ? (err.detail || err.message) : 'No se pudo eliminar la modalidad.')
+    }
+  }
 
   const handlePublish = async () => {
     if (!event?.id) return
@@ -186,7 +224,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   }
 
   const statusInfo = EVENT_STATUS_LABELS[event.status || 'DRAFT']
-  const raceTypeLabel = RACE_TYPES[event.raceType as keyof typeof RACE_TYPES] || event.raceType
+  const totalRegistered = eventModalities.reduce((s, m) => s + m.registeredCount, 0)
+  const totalCapacity = eventModalities.reduce((s, m) => s + m.capacity, 0)
+  const totalAvailable = eventModalities.reduce((s, m) => s + m.availableSpots, 0)
 
   return (
     <DashboardLayout title={event.name || 'Detalle del Evento'} description="">
@@ -366,22 +406,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Tipo de carrera</p>
-                  <p className="text-foreground">{raceTypeLabel}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Distancia</p>
-                  <p className="text-foreground">{event.Distance || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Precio</p>
-                  <p className="text-foreground">
-                    {event.price !== undefined ? `$${event.price.toFixed(2)}` : '-'}
-                  </p>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -419,6 +443,121 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             </CardContent>
           </Card>
 
+          {/* Modalities */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Modalidades</CardTitle>
+                  <CardDescription>Distancias disponibles para este evento</CardDescription>
+                </div>
+                {(event.status === 'DRAFT' || event.status === 'PUBLISHED') && (
+                  <Button size="sm" variant="outline" onClick={() => setShowModalityForm((v) => !v)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {showModalityForm && (
+                <form onSubmit={handleAddModality} className="rounded-lg border p-4 space-y-3">
+                  {modalityError && (
+                    <div className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{modalityError}</div>
+                  )}
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel htmlFor="mName">Nombre *</FieldLabel>
+                      <Input
+                        id="mName"
+                        value={modalityForm.name}
+                        onChange={(e) => setModalityForm({ ...modalityForm, name: e.target.value })}
+                        placeholder="21K Medio Maratón"
+                        required
+                      />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field>
+                        <FieldLabel htmlFor="mDistance">Distancia *</FieldLabel>
+                        <Input
+                          id="mDistance"
+                          type="number"
+                          value={modalityForm.distance || ''}
+                          onChange={(e) => setModalityForm({ ...modalityForm, distance: parseFloat(e.target.value) })}
+                          min={0.01}
+                          step={0.01}
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="mUnit">Unidad *</FieldLabel>
+                        <select
+                          id="mUnit"
+                          value={modalityForm.distanceUnit}
+                          onChange={(e) => setModalityForm({ ...modalityForm, distanceUnit: e.target.value as 'KM' | 'MI' })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                          required
+                        >
+                          <option value="KM">KM</option>
+                          <option value="MI">Millas</option>
+                        </select>
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field>
+                        <FieldLabel htmlFor="mPrice">Precio *</FieldLabel>
+                        <Input
+                          id="mPrice"
+                          type="number"
+                          value={modalityForm.price}
+                          onChange={(e) => setModalityForm({ ...modalityForm, price: parseFloat(e.target.value) })}
+                          min={0}
+                          step={0.01}
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="mCapacity">Cupo *</FieldLabel>
+                        <Input
+                          id="mCapacity"
+                          type="number"
+                          value={modalityForm.capacity}
+                          onChange={(e) => setModalityForm({ ...modalityForm, capacity: parseInt(e.target.value) })}
+                          min={1}
+                          required
+                        />
+                      </Field>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit" size="sm" disabled={isSavingModality}>
+                        {isSavingModality ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar modalidad'}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setShowModalityForm(false)}>Cancelar</Button>
+                    </div>
+                  </FieldGroup>
+                </form>
+              )}
+              {eventModalities.length === 0 && !showModalityForm && (
+                <p className="text-sm text-muted-foreground">Sin modalidades. Se usará el cupo y precio general del evento.</p>
+              )}
+              {eventModalities.map((m) => (
+                <div key={m.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-medium">{m.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {m.distance} {m.distanceUnit} · ${m.price.toFixed(2)} · {m.registeredCount}/{m.capacity} inscritos
+                    </p>
+                  </div>
+                  {(event.status === 'DRAFT' || event.status === 'PUBLISHED') && m.registeredCount === 0 && (
+                    <Button size="icon" variant="ghost" onClick={() => handleDeleteModality(m.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           {/* Gallery */}
           {event.galleryImages && event.galleryImages.length > 0 && (
             <Card>
@@ -450,33 +589,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Inscritos</span>
-                <span className="text-xl font-bold">{event.registeredParticipants || 0}</span>
+                <span className="text-xl font-bold">{totalRegistered}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Máximo</span>
-                <span className="text-xl font-bold">{event.maxParticipants || '-'}</span>
+                <span className="text-muted-foreground">Capacidad</span>
+                <span className="text-xl font-bold">{totalCapacity || '-'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Disponibles</span>
-                <span className="text-xl font-bold text-primary">
-                  {event.registrationsAvailable ?? '-'}
-                </span>
+                <span className="text-xl font-bold text-primary">{totalAvailable}</span>
               </div>
-              {event.maxParticipants && event.registeredParticipants !== undefined && (
+              {totalCapacity > 0 && (
                 <div className="mt-4">
                   <div className="h-2 w-full rounded-full bg-muted">
                     <div
                       className="h-2 rounded-full bg-primary"
-                      style={{
-                        width: `${Math.min(
-                          (event.registeredParticipants / event.maxParticipants) * 100,
-                          100
-                        )}%`,
-                      }}
+                      style={{ width: `${Math.min((totalRegistered / totalCapacity) * 100, 100)}%` }}
                     />
                   </div>
                   <p className="mt-2 text-center text-sm text-muted-foreground">
-                    {Math.round((event.registeredParticipants / event.maxParticipants) * 100)}% ocupado
+                    {Math.round((totalRegistered / totalCapacity) * 100)}% ocupado
                   </p>
                 </div>
               )}
@@ -521,7 +653,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <Users className="h-5 w-5" />
                     Participantes inscritos
                     <span className="text-sm font-normal text-muted-foreground">
-                      {participants.length} / {event.maxParticipants ?? '∞'}
+                      {participants.length} / {totalCapacity || '∞'}
                     </span>
                   </CardTitle>
                 </div>

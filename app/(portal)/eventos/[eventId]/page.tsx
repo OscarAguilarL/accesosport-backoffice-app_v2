@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { events as eventsApi, registrations as registrationsApi, ApiError } from '@/lib/api'
-import type { EventResponse, RegistrationResponse } from '@/lib/types'
+import { events as eventsApi, registrations as registrationsApi, modalities as modalitiesApi, ApiError } from '@/lib/api'
+import type { EventResponse, RegistrationResponse, EventModalityResponse } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,14 +46,20 @@ export default function EventDetailPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
   const [event, setEvent] = useState<EventResponse | null>(null)
+  const [modalities, setModalities] = useState<EventModalityResponse[]>([])
   const [myRegistration, setMyRegistration] = useState<RegistrationResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    eventsApi
-      .get(eventId)
-      .then(setEvent)
+    Promise.all([
+      eventsApi.get(eventId),
+      modalitiesApi.list(eventId).catch(() => [] as EventModalityResponse[]),
+    ])
+      .then(([eventData, modalitiesData]) => {
+        setEvent(eventData)
+        setModalities(modalitiesData)
+      })
       .catch((err) => {
         setError(
           err instanceof ApiError
@@ -101,8 +107,10 @@ export default function EventDetailPage() {
   }
 
   const isRegistrationOpen = event.status === 'REGISTRATION_OPEN'
-  const hasSpots = (event.registrationsAvailable ?? 0) > 0 || event.registrationsAvailable === undefined
+  const totalAvailableSpots = modalities.reduce((s, m) => s + m.availableSpots, 0)
+  const hasSpots = modalities.length === 0 || totalAvailableSpots > 0
   const statusMessage = event.status ? STATUS_MESSAGES[event.status] : ''
+  const hasModalities = modalities.length > 0
 
   const registrationSection = () => {
     if (myRegistration) {
@@ -126,7 +134,7 @@ export default function EventDetailPage() {
       )
     }
 
-    if (!hasSpots) {
+    if (!hasSpots && !hasModalities) {
       return (
         <div className="rounded-lg border bg-muted p-4">
           <p className="text-sm text-muted-foreground">Sin lugares disponibles</p>
@@ -209,21 +217,32 @@ export default function EventDetailPage() {
                 </span>
               </div>
             )}
-            {event.registrationsAvailable !== undefined && (
+            {hasModalities && (
               <div className="flex items-center gap-2 text-sm">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {event.registrationsAvailable} de {event.maxParticipants} lugares disponibles
-                </span>
-              </div>
-            )}
-            {event.Distance && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Distancia:</span>
-                <span>{event.Distance}</span>
+                <span>{totalAvailableSpots} lugares disponibles</span>
               </div>
             )}
           </div>
+
+          {hasModalities && (
+            <div>
+              <h2 className="mb-3 font-semibold">Modalidades disponibles</h2>
+              <div className="space-y-2">
+                {modalities.map((m) => (
+                  <div key={m.id} className="rounded-lg border p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{m.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {m.distance} {m.distanceUnit} · {m.availableSpots} lugares disponibles
+                      </p>
+                    </div>
+                    <p className="font-bold text-lg shrink-0">{formatPrice(m.price)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {event.galleryImages && event.galleryImages.length > 0 && (
             <div>
@@ -245,14 +264,16 @@ export default function EventDetailPage() {
 
         <div className="space-y-4">
           <div className="rounded-xl border bg-card p-4 space-y-4">
-            <div>
-              <p className="text-3xl font-bold">{formatPrice(event.price)}</p>
-              {event.raceType && (
-                <p className="text-sm text-muted-foreground capitalize">
-                  {event.raceType.replace(/_/g, ' ').toLowerCase()}
+
+            {hasModalities && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Desde</p>
+                <p className="text-3xl font-bold">
+                  {formatPrice(Math.min(...modalities.map((m) => m.price)))}
                 </p>
-              )}
-            </div>
+                <p className="text-xs text-muted-foreground">{modalities.length} modalidad{modalities.length !== 1 ? 'es' : ''}</p>
+              </div>
+            )}
 
             {event.organizer?.email && (
               <div className="text-sm">

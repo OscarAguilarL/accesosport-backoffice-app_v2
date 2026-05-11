@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { events as eventsApi, profile as profileApi, registrations as registrationsApi, ApiError } from '@/lib/api'
-import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType, Gender } from '@/lib/types'
+import { events as eventsApi, profile as profileApi, registrations as registrationsApi, modalities as modalitiesApi, ApiError } from '@/lib/api'
+import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType, Gender, EventModalityResponse } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle, ChevronLeft } from 'lucide-react'
 
-type Step = 'profile' | 'confirm' | 'success'
+type Step = 'profile' | 'modality' | 'confirm' | 'success'
 
 const SHIRT_SIZE_OPTIONS: { value: ShirtSize; label: string }[] = [
   { value: 'SIZE_XS', label: 'XS' },
@@ -71,6 +71,8 @@ export default function InscribirsePage() {
 
   const [step, setStep] = useState<Step>('profile')
   const [event, setEvent] = useState<EventResponse | null>(null)
+  const [eventModalities, setEventModalities] = useState<EventModalityResponse[]>([])
+  const [selectedModality, setSelectedModality] = useState<EventModalityResponse | null>(null)
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [ticketCode, setTicketCode] = useState<string>('')
 
@@ -102,13 +104,15 @@ export default function InscribirsePage() {
 
     Promise.all([
       eventsApi.get(eventId),
+      modalitiesApi.list(eventId).catch(() => [] as EventModalityResponse[]),
       profileApi.getParticipant().catch((err) => {
         if (err instanceof ApiError && err.status === 404) return null
         throw err
       }),
     ])
-      .then(([eventData, profileData]) => {
+      .then(([eventData, modalitiesData, profileData]) => {
         setEvent(eventData)
+        setEventModalities(modalitiesData)
         if (!profileData || !isProfileComplete(profileData)) {
           if (profileData?.shirtSize) {
             setProfileExists(true)
@@ -123,6 +127,8 @@ export default function InscribirsePage() {
             })
           }
           setShowProfileForm(true)
+        } else if (modalitiesData.length > 0) {
+          setStep('modality')
         } else {
           setStep('confirm')
         }
@@ -147,7 +153,11 @@ export default function InscribirsePage() {
         await profileApi.createParticipant(payload)
       }
       setShowProfileForm(false)
-      setStep('confirm')
+      if (eventModalities.length > 0) {
+        setStep('modality')
+      } else {
+        setStep('confirm')
+      }
     } catch (err) {
       setProfileError(
         err instanceof ApiError ? (err.detail || err.message) : 'Error al guardar el perfil.'
@@ -157,11 +167,16 @@ export default function InscribirsePage() {
     }
   }
 
+  const handleSelectModality = (modality: EventModalityResponse) => {
+    setSelectedModality(modality)
+    setStep('confirm')
+  }
+
   const handleRegister = async () => {
     setIsRegistering(true)
     setRegisterError(null)
     try {
-      const reg = await registrationsApi.register(eventId)
+      const reg = await registrationsApi.register(eventId, selectedModality?.id)
       setTicketCode(reg.ticketCode)
       setStep('success')
     } catch (err) {
@@ -193,11 +208,24 @@ export default function InscribirsePage() {
 
   if (!isAuthenticated) return null
 
-  const STEPS: { key: Step; label: string; number: number }[] = [
-    { key: 'profile', label: 'Perfil', number: 1 },
-    { key: 'confirm', label: 'Confirmar', number: 2 },
-    { key: 'success', label: 'Listo', number: 3 },
-  ]
+  const hasModalities = eventModalities.length > 0
+
+  const allSteps: { key: Step; label: string; number: number }[] = hasModalities
+    ? [
+        { key: 'profile', label: 'Perfil', number: 1 },
+        { key: 'modality', label: 'Modalidad', number: 2 },
+        { key: 'confirm', label: 'Confirmar', number: 3 },
+        { key: 'success', label: 'Listo', number: 4 },
+      ]
+    : [
+        { key: 'profile', label: 'Perfil', number: 1 },
+        { key: 'confirm', label: 'Confirmar', number: 2 },
+        { key: 'success', label: 'Listo', number: 3 },
+      ]
+
+  const currentStepIndex = allSteps.findIndex((s) => s.key === step)
+
+  const effectivePrice = selectedModality ? selectedModality.price : 0
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -213,21 +241,21 @@ export default function InscribirsePage() {
 
       {/* Stepper */}
       <div className="flex items-center gap-2">
-        {STEPS.map((s, idx) => (
+        {allSteps.map((s, idx) => (
           <div key={s.key} className="flex items-center gap-2">
             <div
               className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${
                 step === s.key
                   ? 'bg-primary text-primary-foreground'
-                  : s.number < STEPS.findIndex((x) => x.key === step) + 1
+                  : s.number < currentStepIndex + 1
                   ? 'bg-green-500 text-white'
                   : 'bg-muted text-muted-foreground'
               }`}
             >
-              {s.number < STEPS.findIndex((x) => x.key === step) + 1 ? '✓' : s.number}
+              {s.number < currentStepIndex + 1 ? '✓' : s.number}
             </div>
             <span className="text-sm text-muted-foreground hidden sm:inline">{s.label}</span>
-            {idx < STEPS.length - 1 && (
+            {idx < allSteps.length - 1 && (
               <div className="h-px w-8 bg-muted" />
             )}
           </div>
@@ -376,7 +404,42 @@ export default function InscribirsePage() {
         </Card>
       )}
 
-      {/* Step 2: Confirm */}
+      {/* Step: Modality selection */}
+      {step === 'modality' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Elige tu modalidad</CardTitle>
+            <CardDescription>Selecciona la distancia en la que deseas participar.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {eventModalities.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => handleSelectModality(m)}
+                disabled={m.availableSpots === 0}
+                className={`w-full rounded-lg border p-4 text-left transition-colors hover:border-primary hover:bg-primary/5 ${
+                  m.availableSpots === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{m.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {m.distance} {m.distanceUnit} · {m.availableSpots > 0 ? `${m.availableSpots} lugares disponibles` : 'Sin lugares'}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold shrink-0">{formatPrice(m.price)}</p>
+                </div>
+              </button>
+            ))}
+            <Button variant="ghost" className="w-full" onClick={() => setStep('profile')}>
+              Atrás
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step: Confirm */}
       {step === 'confirm' && event && (
         <Card>
           <CardHeader>
@@ -392,7 +455,13 @@ export default function InscribirsePage() {
                   {[event.location.city, event.location.country].filter(Boolean).join(', ')}
                 </p>
               )}
-              <p className="text-xl font-bold mt-2">{formatPrice(event.price)}</p>
+              {selectedModality && (
+                <div className="mt-2 rounded-md bg-primary/10 p-2">
+                  <p className="text-sm font-medium">Modalidad: {selectedModality.name}</p>
+                  <p className="text-xs text-muted-foreground">{selectedModality.distance} {selectedModality.distanceUnit}</p>
+                </div>
+              )}
+              <p className="text-xl font-bold mt-2">{formatPrice(effectivePrice)}</p>
             </div>
 
             {registerError && (
@@ -401,10 +470,16 @@ export default function InscribirsePage() {
               </div>
             )}
 
-            {(event.price ?? 0) > 0 ? (
+            {hasModalities && (
+              <Button variant="outline" className="w-full" onClick={() => setStep('modality')}>
+                Cambiar modalidad
+              </Button>
+            )}
+
+            {effectivePrice > 0 ? (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Este evento tiene un costo de <strong>{formatPrice(event.price)}</strong>.
+                  Este evento tiene un costo de <strong>{formatPrice(effectivePrice)}</strong>.
                   El pago en línea estará disponible próximamente.
                 </p>
                 <Button disabled className="w-full">
@@ -427,7 +502,7 @@ export default function InscribirsePage() {
         </Card>
       )}
 
-      {/* Step 3: Success */}
+      {/* Step: Success */}
       {step === 'success' && event && (
         <Card>
           <CardContent className="pt-6 flex flex-col items-center text-center gap-4">
@@ -440,6 +515,9 @@ export default function InscribirsePage() {
             <div className="rounded-lg border bg-muted/40 p-4 w-full space-y-2 text-left">
               <p className="font-semibold">{event.name}</p>
               <p className="text-sm text-muted-foreground">{formatDate(event.eventDate)}</p>
+              {selectedModality && (
+                <p className="text-sm text-muted-foreground">Modalidad: {selectedModality.name}</p>
+              )}
               <p className="text-xs text-muted-foreground font-mono">
                 Folio: {ticketCode}
               </p>
