@@ -227,6 +227,8 @@ export const EVENT_STATUS_LABELS: Record<string, { label: string; variant: 'defa
 
 export type ShirtSize = 'SIZE_XS' | 'SIZE_S' | 'SIZE_M' | 'SIZE_L' | 'SIZE_XL' | 'SIZE_XXL'
 
+export type Gender = 'FEMENIL' | 'VARONIL' | 'OTRO'
+
 export type BloodType =
   | 'A_POSITIVE'
   | 'A_NEGATIVE'
@@ -244,6 +246,8 @@ export interface ParticipantProfileResponse {
   emergencyContactPhone?: string
   medicalConditions?: string
   bloodType?: BloodType
+  phone?: string
+  gender?: Gender
   createdAt?: string
   updatedAt?: string
 }
@@ -254,6 +258,8 @@ export interface CreateParticipantProfileRequest {
   emergencyContactPhone: string
   medicalConditions?: string
   bloodType: BloodType
+  phone: string
+  gender: Gender
 }
 
 export interface ParticipantInEventResponse {
@@ -270,5 +276,6 @@ export interface ParticipantInEventResponse {
   ticketCode: string
   bibNumber: number | null
   kitPickedUp: boolean
+  kitPickedUpAt?: string | null
   registeredAt: string
 }

@@ -18,7 +18,7 @@ import type {
   RegistrationResponse,
 } from './types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/proxy'
 
 class ApiError extends Error {
   status: number
@@ -231,6 +231,12 @@ export const profile = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  updateParticipant: (data: CreateParticipantProfileRequest) =>
+    fetchApi<ParticipantProfileResponse>('/api/v1/user/profile/participant', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Registrations endpoints
@@ -250,6 +256,34 @@ export const registrations = {
 
   getMyRegistrations: () =>
     fetchApi<RegistrationResponse[]>('/api/v1/user/registrations'),
+
+  downloadTicket: async (registrationId: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/user/registrations/${registrationId}/ticket`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+    )
+    if (!response.ok) throw new ApiError('Error al descargar el boleto', response.status)
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `boleto-${registrationId}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+}
+
+// Check-in endpoints
+export const checkin = {
+  findByCode: (ticketCode: string) =>
+    fetchApi<ParticipantInEventResponse>(`/api/v1/registrations/${ticketCode}`),
+
+  markKitDelivered: (ticketCode: string) =>
+    fetchApi<ParticipantInEventResponse>(`/api/v1/registrations/${ticketCode}/kit-pickup`, {
+      method: 'PUT',
+    }),
 }
 
 export { ApiError }

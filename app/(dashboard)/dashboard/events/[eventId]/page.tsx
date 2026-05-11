@@ -44,6 +44,7 @@ import {
   Image as ImageIcon,
   Clock,
   Download,
+  ScanLine,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -208,6 +209,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             <Button onClick={handleOpenRegistration} disabled={isActionLoading}>
               <Play className="mr-2 h-4 w-4" />
               Abrir Inscripciones
+            </Button>
+          )}
+          {(event.status === 'REGISTRATION_CLOSED' || event.status === 'IN_PROGRESS') && (
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/events/${eventId}/checkin`}>
+                <ScanLine className="mr-2 h-4 w-4" />
+                Check-in de kits
+              </Link>
             </Button>
           )}
           {event.status === 'IN_PROGRESS' && (
