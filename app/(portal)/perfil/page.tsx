@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { profile as profileApi, ApiError } from '@/lib/api'
-import type { CreateParticipantProfileRequest, ShirtSize, BloodType } from '@/lib/types'
+import type { CreateParticipantProfileRequest, ShirtSize, BloodType, Gender } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,18 +34,27 @@ const BLOOD_TYPE_OPTIONS: { value: BloodType; label: string }[] = [
   { value: 'O_NEGATIVE', label: 'O-' },
 ]
 
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: 'FEMENIL', label: 'Femenil' },
+  { value: 'VARONIL', label: 'Varonil' },
+  { value: 'OTRO', label: 'Otro' },
+]
+
 const EMPTY_FORM: CreateParticipantProfileRequest = {
   shirtSize: 'SIZE_M',
   bloodType: 'O_POSITIVE',
   emergencyContactName: '',
   emergencyContactPhone: '',
   medicalConditions: '',
+  phone: '',
+  gender: 'FEMENIL',
 }
 
 export default function PerfilPage() {
   const router = useRouter()
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [formData, setFormData] = useState<CreateParticipantProfileRequest>(EMPTY_FORM)
+  const [profileExists, setProfileExists] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -63,12 +72,15 @@ export default function PerfilPage() {
       .getParticipant()
       .then((data) => {
         if (data.shirtSize && data.bloodType) {
+          setProfileExists(true)
           setFormData({
             shirtSize: data.shirtSize,
             bloodType: data.bloodType,
             emergencyContactName: data.emergencyContactName || '',
             emergencyContactPhone: data.emergencyContactPhone || '',
             medicalConditions: data.medicalConditions || '',
+            phone: data.phone || '',
+            gender: data.gender || 'FEMENIL',
           })
         }
       })
@@ -91,10 +103,13 @@ export default function PerfilPage() {
     setSuccessMessage(null)
     setErrorMessage(null)
     try {
-      await profileApi.createParticipant({
-        ...formData,
-        medicalConditions: formData.medicalConditions || undefined,
-      })
+      const payload = { ...formData, medicalConditions: formData.medicalConditions || undefined }
+      if (profileExists) {
+        await profileApi.updateParticipant(payload)
+      } else {
+        await profileApi.createParticipant(payload)
+        setProfileExists(true)
+      }
       setSuccessMessage('Perfil guardado correctamente.')
     } catch (err) {
       setErrorMessage(
@@ -178,6 +193,42 @@ export default function PerfilPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {BLOOD_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="phone">Teléfono *</FieldLabel>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="10 dígitos"
+                    required
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="gender">Género *</FieldLabel>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, gender: value as Gender })
+                    }
+                    required
+                  >
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>

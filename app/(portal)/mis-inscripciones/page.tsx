@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { CalendarDays, Ticket, Search } from 'lucide-react'
+import { CalendarDays, Ticket, Search, Download } from 'lucide-react'
 
 function formatDate(dateString?: string): string {
   if (!dateString) return '-'
@@ -55,6 +55,8 @@ export default function MisInscripcionesPage() {
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -77,6 +79,22 @@ export default function MisInscripcionesPage() {
       })
       .finally(() => setIsLoading(false))
   }, [isAuthenticated])
+
+  const handleDownloadTicket = async (registrationId: string) => {
+    setDownloading(registrationId)
+    setDownloadError(null)
+    try {
+      await registrationsApi.downloadTicket(registrationId)
+    } catch (err) {
+      setDownloadError(
+        err instanceof ApiError
+          ? (err.detail || err.message)
+          : 'Error al descargar el boleto.'
+      )
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   const handleCancel = async (registration: RegistrationResponse) => {
     setCancelling(registration.id)
@@ -130,6 +148,12 @@ export default function MisInscripcionesPage() {
         </div>
       )}
 
+      {downloadError && (
+        <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {downloadError}
+        </div>
+      )}
+
       {registrations.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 text-muted-foreground">
           <Ticket className="h-12 w-12 opacity-40" />
@@ -149,6 +173,8 @@ export default function MisInscripcionesPage() {
           {registrations.map((reg) => {
             const canCancel = reg.status === 'CONFIRMED' && reg.eventDate != null && isFutureDate(reg.eventDate)
             const isCancelling = cancelling === reg.id
+            const isConfirmed = reg.status === 'CONFIRMED'
+            const isDownloading = downloading === reg.id
 
             return (
               <Card key={reg.id} className="flex flex-col">
@@ -170,6 +196,30 @@ export default function MisInscripcionesPage() {
                   <div className="text-xs text-muted-foreground font-mono">
                     Folio: {reg.ticketCode}
                   </div>
+
+                  {isConfirmed && (
+                    <div className="pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                        disabled={isDownloading}
+                        onClick={() => handleDownloadTicket(reg.id)}
+                      >
+                        {isDownloading ? (
+                          <>
+                            <Spinner className="mr-1" />
+                            Generando...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4" />
+                            Descargar boleto PDF
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
 
                   {canCancel && (
                     <div className="mt-auto pt-2">

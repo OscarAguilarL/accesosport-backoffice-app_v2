@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { events as eventsApi, profile as profileApi, registrations as registrationsApi, ApiError } from '@/lib/api'
-import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType } from '@/lib/types'
+import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType, Gender } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,12 @@ const BLOOD_TYPE_OPTIONS: { value: BloodType; label: string }[] = [
   { value: 'AB_NEGATIVE', label: 'AB-' },
   { value: 'O_POSITIVE', label: 'O+' },
   { value: 'O_NEGATIVE', label: 'O-' },
+]
+
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: 'FEMENIL', label: 'Femenil' },
+  { value: 'VARONIL', label: 'Varonil' },
+  { value: 'OTRO', label: 'Otro' },
 ]
 
 function formatDate(dateString?: string): string {
@@ -74,7 +80,10 @@ export default function InscribirsePage() {
     emergencyContactName: '',
     emergencyContactPhone: '',
     medicalConditions: '',
+    phone: '',
+    gender: 'FEMENIL',
   })
+  const [profileExists, setProfileExists] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -102,12 +111,15 @@ export default function InscribirsePage() {
         setEvent(eventData)
         if (!profileData || !isProfileComplete(profileData)) {
           if (profileData?.shirtSize) {
+            setProfileExists(true)
             setProfileFormData({
               shirtSize: profileData.shirtSize,
               bloodType: profileData.bloodType ?? 'O_POSITIVE',
               emergencyContactName: profileData.emergencyContactName ?? '',
               emergencyContactPhone: profileData.emergencyContactPhone ?? '',
               medicalConditions: profileData.medicalConditions ?? '',
+              phone: profileData.phone ?? '',
+              gender: profileData.gender ?? 'FEMENIL',
             })
           }
           setShowProfileForm(true)
@@ -128,10 +140,12 @@ export default function InscribirsePage() {
     setIsSavingProfile(true)
     setProfileError(null)
     try {
-      await profileApi.createParticipant({
-        ...profileFormData,
-        medicalConditions: profileFormData.medicalConditions || undefined,
-      })
+      const payload = { ...profileFormData, medicalConditions: profileFormData.medicalConditions || undefined }
+      if (profileExists) {
+        await profileApi.updateParticipant(payload)
+      } else {
+        await profileApi.createParticipant(payload)
+      }
       setShowProfileForm(false)
       setStep('confirm')
     } catch (err) {
@@ -272,6 +286,38 @@ export default function InscribirsePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {BLOOD_TYPE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="phone">Teléfono *</FieldLabel>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={profileFormData.phone}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
+                        placeholder="10 dígitos"
+                        required
+                      />
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor="gender">Género *</FieldLabel>
+                      <Select
+                        value={profileFormData.gender}
+                        onValueChange={(v) => setProfileFormData({ ...profileFormData, gender: v as Gender })}
+                        required
+                      >
+                        <SelectTrigger id="gender">
+                          <SelectValue placeholder="Selecciona" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENDER_OPTIONS.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                           ))}
                         </SelectContent>
