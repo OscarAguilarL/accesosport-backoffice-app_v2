@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/lib/auth-context'
 import { AuthRouteTracker } from '@/components/auth-route-tracker'
+import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
@@ -41,6 +42,7 @@ export default function RootLayout({
         <AuthProvider>
           <AuthRouteTracker />
           {children}
+          <Toaster />
           <Analytics />
         </AuthProvider>
       </body>

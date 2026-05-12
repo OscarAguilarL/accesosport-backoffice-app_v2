@@ -33,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
+import { useToast } from '@/components/ui/use-toast'
 import { events as eventsApi, registrations as registrationsApi, modalities as modalitiesApi, checkin as checkinApi, ApiError } from '@/lib/api'
 import type { EventResponse, ParticipantInEventResponse, EventModalityResponse, CreateModalityRequest, CheckinTokenResponse } from '@/lib/types'
 import { EVENT_STATUS_LABELS } from '@/lib/types'
@@ -88,6 +89,7 @@ function exportToCSV(participants: ParticipantInEventResponse[], eventName: stri
 export default function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params)
   const router = useRouter()
+  const { toast } = useToast()
   const [event, setEvent] = useState<EventResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isActionLoading, setIsActionLoading] = useState(false)
@@ -155,7 +157,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
       await modalitiesApi.delete(eventId, modalityId)
       setEventModalities((prev) => prev.filter((m) => m.id !== modalityId))
     } catch (err) {
-      alert(err instanceof ApiError ? (err.detail || err.message) : 'No se pudo eliminar la modalidad.')
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'No se pudo eliminar la modalidad.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -165,8 +171,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     try {
       const updated = await eventsApi.publish(event.id)
       setEvent(updated)
-    } catch (error) {
-      console.log('[v0] Error publishing event:', error)
+      toast({ title: 'Evento publicado', description: 'El evento ya es visible para los participantes.' })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'No se pudo publicar el evento.',
+        variant: 'destructive',
+      })
     } finally {
       setIsActionLoading(false)
     }
@@ -178,8 +189,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     try {
       const updated = await eventsApi.openRegistration(event.id)
       setEvent(updated)
-    } catch (error) {
-      console.log('[v0] Error opening registration:', error)
+      toast({ title: 'Inscripciones abiertas', description: 'Los participantes ya pueden inscribirse.' })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'No se pudieron abrir las inscripciones.',
+        variant: 'destructive',
+      })
     } finally {
       setIsActionLoading(false)
     }
@@ -191,8 +207,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     try {
       const updated = await eventsApi.complete(event.id)
       setEvent(updated)
-    } catch (error) {
-      console.log('[v0] Error completing event:', error)
+      toast({ title: 'Evento completado' })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'No se pudo completar el evento.',
+        variant: 'destructive',
+      })
     } finally {
       setIsActionLoading(false)
     }
@@ -203,9 +224,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     setIsActionLoading(true)
     try {
       await eventsApi.cancel(event.id)
+      toast({ title: 'Evento cancelado', description: 'El evento ha sido cancelado correctamente.' })
       router.push('/dashboard/events')
-    } catch (error) {
-      console.log('[v0] Error cancelling event:', error)
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'No se pudo cancelar el evento.',
+        variant: 'destructive',
+      })
     } finally {
       setIsActionLoading(false)
     }
@@ -229,7 +255,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         }
       }, 50)
     } catch (err) {
-      alert(err instanceof ApiError ? (err.detail || err.message) : 'Error al generar el QR.')
+      toast({
+        title: 'Error',
+        description: err instanceof ApiError ? (err.detail || err.message) : 'Error al generar el QR.',
+        variant: 'destructive',
+      })
     } finally {
       setIsGeneratingQr(false)
     }
@@ -285,16 +315,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         </Button>
         <div className="flex flex-wrap gap-2">
           {event.status === 'DRAFT' && (
-            <Button onClick={handlePublish} disabled={isActionLoading}>
-              <Globe className="mr-2 h-4 w-4" />
-              Publicar
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button disabled={isActionLoading}>
+                  <Globe className="mr-2 h-4 w-4" />
+                  Publicar
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Publicar este evento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    El evento será visible para los participantes. Podrás abrir las inscripciones cuando quieras.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handlePublish}>Sí, publicar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {event.status === 'PUBLISHED' && (
-            <Button onClick={handleOpenRegistration} disabled={isActionLoading}>
-              <Play className="mr-2 h-4 w-4" />
-              Abrir Inscripciones
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button disabled={isActionLoading}>
+                  <Play className="mr-2 h-4 w-4" />
+                  Abrir Inscripciones
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Abrir inscripciones?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Los participantes podrán inscribirse desde este momento.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleOpenRegistration}>Sí, abrir</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {(event.status === 'REGISTRATION_CLOSED' || event.status === 'IN_PROGRESS') && (
             <>
