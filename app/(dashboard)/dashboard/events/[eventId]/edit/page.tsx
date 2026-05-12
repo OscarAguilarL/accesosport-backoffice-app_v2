@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { ImageDropzone } from '@/components/ui/image-dropzone'
 import { events as eventsApi, ApiError } from '@/lib/api'
 import type { UpdateEventRequest, EventResponse, EventImageResponse } from '@/lib/types'
-import { ArrowLeft, Activity, Calendar, MapPin, Users, ImageIcon, X } from 'lucide-react'
+import { ArrowLeft, Activity, Calendar, MapPin, Users, ImageIcon, X, ScrollText } from 'lucide-react'
 
 type GalleryItem = { file: File; preview: string }
 
@@ -58,6 +58,7 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
           longitude: data.location?.longitude,
           registrationStartDate: toDatetimeLocalValue(data.registrationPeriod?.start),
           registrationEndDate: toDatetimeLocalValue(data.registrationPeriod?.end),
+          waiverTemplate: data.waiverTemplate,
         })
       })
       .catch((err) => {
@@ -409,6 +410,31 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
                   disabled={isSaving}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Waiver Template */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ScrollText className="h-5 w-5" />
+                Carta responsiva
+              </CardTitle>
+              <CardDescription>
+                Texto del deslinde de responsabilidad que se mostrará a los participantes al inscribirse.
+                Las variables <code className="text-xs bg-muted px-1 rounded">{'{participantFullName}'}</code>,{' '}
+                <code className="text-xs bg-muted px-1 rounded">{'{eventName}'}</code>,{' '}
+                <code className="text-xs bg-muted px-1 rounded">{'{eventDate}'}</code> se sustituyen automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                id="waiverTemplate"
+                value={formData.waiverTemplate ?? ''}
+                onChange={(e) => update('waiverTemplate', e.target.value)}
+                rows={18}
+                className="font-mono text-xs"
+              />
             </CardContent>
           </Card>
 

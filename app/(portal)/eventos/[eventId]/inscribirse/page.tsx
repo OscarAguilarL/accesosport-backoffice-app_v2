@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
-import { CheckCircle, ChevronLeft } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ScrollText, X } from 'lucide-react'
 
 type Step = 'profile' | 'modality' | 'confirm' | 'success'
 
@@ -67,7 +67,7 @@ export default function InscribirsePage() {
   const params = useParams()
   const router = useRouter()
   const eventId = params.eventId as string
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
   const [step, setStep] = useState<Step>('profile')
   const [event, setEvent] = useState<EventResponse | null>(null)
@@ -92,6 +92,11 @@ export default function InscribirsePage() {
 
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
+
+  const [waiverRead, setWaiverRead] = useState(false)
+  const [waiverAccepted, setWaiverAccepted] = useState(false)
+  const [showWaiverModal, setShowWaiverModal] = useState(false)
+  const [waiverAcceptedAtTime, setWaiverAcceptedAtTime] = useState<Date | null>(null)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -176,7 +181,7 @@ export default function InscribirsePage() {
     setIsRegistering(true)
     setRegisterError(null)
     try {
-      const reg = await registrationsApi.register(eventId, selectedModality?.id)
+      const reg = await registrationsApi.register(eventId, selectedModality?.id, true)
       setTicketCode(reg.ticketCode)
       setStep('success')
     } catch (err) {
@@ -226,6 +231,50 @@ export default function InscribirsePage() {
   const currentStepIndex = allSteps.findIndex((s) => s.key === step)
 
   const effectivePrice = selectedModality ? selectedModality.price : 0
+
+  const participantFullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Participante'
+
+  function renderWaiverContent(template: string, includeAcceptedAt: boolean): React.ReactNode {
+    const vars: Record<string, string> = {
+      participantFullName,
+      eventName: event?.name ?? '',
+      eventDate: event?.eventDate ? formatDate(event.eventDate) : '',
+      ...(includeAcceptedAt && waiverAcceptedAtTime
+        ? { waiverAcceptedAt: waiverAcceptedAtTime.toLocaleString('es-MX') }
+        : {}),
+    }
+
+    const lines = template.split('\n')
+    const visibleLines = includeAcceptedAt
+      ? lines
+      : lines.filter((line) => !line.includes('{waiverAcceptedAt}'))
+
+    const processedText = visibleLines.join('\n')
+
+    const regex = /\{(\w+)\}/g
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    regex.lastIndex = 0
+    while ((match = regex.exec(processedText)) !== null) {
+      const varName = match[1]
+      if (match.index > lastIndex) {
+        parts.push(processedText.slice(lastIndex, match.index))
+      }
+      if (varName in vars) {
+        parts.push(<strong key={match.index}>{vars[varName]}</strong>)
+      } else {
+        parts.push(match[0])
+      }
+      lastIndex = match.index + match[0].length
+    }
+    if (lastIndex < processedText.length) {
+      parts.push(processedText.slice(lastIndex))
+    }
+
+    return parts
+  }
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -439,6 +488,43 @@ export default function InscribirsePage() {
         </Card>
       )}
 
+      {/* Waiver Modal */}
+      {showWaiverModal && event && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <h2 className="text-lg font-semibold">Deslinde de responsabilidad</h2>
+              <button
+                onClick={() => setShowWaiverModal(false)}
+                className="rounded-sm opacity-70 hover:opacity-100"
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <p className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">
+                {renderWaiverContent(event.waiverTemplate ?? '', false)}
+              </p>
+            </div>
+            <div className="border-t px-6 py-4">
+              <Button
+                className="w-full"
+                onClick={() => {
+                  const now = new Date()
+                  setWaiverRead(true)
+                  setWaiverAccepted(true)
+                  setWaiverAcceptedAtTime(now)
+                  setShowWaiverModal(false)
+                }}
+              >
+                He leído y acepto
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step: Confirm */}
       {step === 'confirm' && event && (
         <Card>
@@ -464,6 +550,38 @@ export default function InscribirsePage() {
               <p className="text-xl font-bold mt-2">{formatPrice(effectivePrice)}</p>
             </div>
 
+            {/* Waiver section */}
+            <div className="space-y-3 rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Carta responsiva</p>
+                  <p className="text-xs text-muted-foreground">Lee el deslinde de responsabilidad antes de continuar.</p>
+                </div>
+                <Button variant="outline" size="sm" className="shrink-0 gap-1" onClick={() => setShowWaiverModal(true)}>
+                  <ScrollText className="h-4 w-4" />
+                  {waiverRead ? 'Ver de nuevo' : 'Leer carta'}
+                </Button>
+              </div>
+              <label className={`flex cursor-pointer items-start gap-3 ${!waiverRead ? 'opacity-40' : ''}`}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border accent-primary"
+                  disabled={!waiverRead}
+                  checked={waiverAccepted}
+                  onChange={(e) => setWaiverAccepted(e.target.checked)}
+                />
+                <span className="text-sm">
+                  Acepto el deslinde de responsabilidad descrito en la carta.
+                </span>
+              </label>
+              {waiverAccepted && waiverAcceptedAtTime && (
+                <p className="text-xs text-muted-foreground">
+                  Fecha y hora de aceptación:{' '}
+                  <strong>{waiverAcceptedAtTime.toLocaleString('es-MX')}</strong>
+                </p>
+              )}
+            </div>
+
             {registerError && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {registerError}
@@ -487,7 +605,11 @@ export default function InscribirsePage() {
                 </Button>
               </div>
             ) : (
-              <Button className="w-full" onClick={handleRegister} disabled={isRegistering}>
+              <Button
+                className="w-full"
+                onClick={handleRegister}
+                disabled={isRegistering || !waiverAccepted}
+              >
                 {isRegistering ? (
                   <>
                     <Spinner className="mr-2" />

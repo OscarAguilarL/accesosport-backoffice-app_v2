@@ -66,6 +66,7 @@ export interface EventResponse {
   coverImageUrl?: string
   galleryImages?: EventImageResponse[]
   createdAt?: string
+  waiverTemplate?: string
 }
 
 export interface EventSummaryResponse {
@@ -115,6 +116,7 @@ export interface UpdateEventRequest {
   longitude?: number
   registrationStartDate?: string
   registrationEndDate?: string
+  waiverTemplate?: string
 }
 
 export interface OrganizerProfileResponse {
