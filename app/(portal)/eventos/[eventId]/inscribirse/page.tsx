@@ -90,6 +90,7 @@ export default function InscribirsePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
 
+  const [wantsShirt, setWantsShirt] = useState<boolean | null>(null)
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
 
@@ -176,6 +177,7 @@ export default function InscribirsePage() {
 
   const handleSelectModality = (modality: EventModalityResponse) => {
     setSelectedModality(modality)
+    setWantsShirt(modality.priceWithoutShirt != null ? null : true)
     setStep('confirm')
   }
 
@@ -183,7 +185,7 @@ export default function InscribirsePage() {
     setIsRegistering(true)
     setRegisterError(null)
     try {
-      const reg = await registrationsApi.register(eventId, selectedModality?.id, true)
+      const reg = await registrationsApi.register(eventId, selectedModality?.id, true, wantsShirt ?? true)
       setTicketCode(reg.ticketCode)
       setStep('success')
     } catch (err) {
@@ -232,7 +234,11 @@ export default function InscribirsePage() {
 
   const currentStepIndex = allSteps.findIndex((s) => s.key === step)
 
-  const effectivePrice = selectedModality ? selectedModality.price : 0
+  const effectivePrice = selectedModality
+    ? (wantsShirt === false && selectedModality.priceWithoutShirt != null
+        ? selectedModality.priceWithoutShirt
+        : selectedModality.price)
+    : 0
 
   const participantFullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Participante'
 
@@ -549,8 +555,44 @@ export default function InscribirsePage() {
                   <p className="text-xs text-muted-foreground">{selectedModality.distance} {selectedModality.distanceUnit}</p>
                 </div>
               )}
-              <p className="text-xl font-bold mt-2">{formatPrice(effectivePrice)}</p>
+              <p className="text-xl font-bold mt-2">
+                {formatPrice(effectivePrice)}
+                {selectedModality?.priceWithoutShirt != null && wantsShirt !== null && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({wantsShirt ? 'con playera' : 'sin playera'})
+                  </span>
+                )}
+              </p>
             </div>
+
+            {/* Shirt option — only shown when modality has priceWithoutShirt */}
+            {selectedModality?.priceWithoutShirt != null && (
+              <div className="space-y-2 rounded-lg border p-4">
+                <p className="text-sm font-medium">¿Quieres incluir playera?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWantsShirt(true)}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      wantsShirt === true ? 'border-primary bg-primary/10' : 'hover:border-primary hover:bg-primary/5'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">Con playera</p>
+                    <p className="text-lg font-bold">{formatPrice(selectedModality.price)}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWantsShirt(false)}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      wantsShirt === false ? 'border-primary bg-primary/10' : 'hover:border-primary hover:bg-primary/5'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">Sin playera</p>
+                    <p className="text-lg font-bold">{formatPrice(selectedModality.priceWithoutShirt)}</p>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Waiver section */}
             <div className="space-y-3 rounded-lg border p-4">
@@ -610,7 +652,7 @@ export default function InscribirsePage() {
               <Button
                 className="w-full"
                 onClick={handleRegister}
-                disabled={isRegistering || !waiverAccepted}
+                disabled={isRegistering || !waiverAccepted || (selectedModality?.priceWithoutShirt != null && wantsShirt === null)}
               >
                 {isRegistering ? (
                   <>

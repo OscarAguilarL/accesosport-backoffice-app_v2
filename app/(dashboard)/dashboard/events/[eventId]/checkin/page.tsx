@@ -322,6 +322,25 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
                   </p>
                 </div>
 
+                {/* Kit type — highlighted for organizer at delivery */}
+                <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                  participant.wantsShirt
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  <Package className="h-5 w-5 shrink-0" />
+                  <div>
+                    <p className="font-semibold leading-tight">
+                      {participant.wantsShirt ? 'Kit CON playera' : 'Kit SIN playera'}
+                    </p>
+                    {participant.wantsShirt && participant.shirtSize && (
+                      <p className="text-sm">
+                        Talla {SHIRT_SIZE_LABELS[participant.shirtSize] ?? participant.shirtSize}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">Talla de playera</p>

@@ -264,10 +264,10 @@ export const registrations = {
   getByEvent: (eventId: string) =>
     fetchApi<ParticipantInEventResponse[]>(`/api/v1/events/${eventId}/registrations`),
 
-  register: (eventId: string, modalityId?: string, waiverAccepted?: boolean) =>
+  register: (eventId: string, modalityId?: string, waiverAccepted?: boolean, wantsShirt?: boolean) =>
     fetchApi<RegistrationResponse>(`/api/v1/events/${eventId}/register`, {
       method: 'POST',
-      body: JSON.stringify({ modalityId, waiverAccepted: waiverAccepted ?? false }),
+      body: JSON.stringify({ modalityId, waiverAccepted: waiverAccepted ?? false, wantsShirt: wantsShirt ?? true }),
     }),
 
   cancel: (eventId: string, registrationId: string) =>

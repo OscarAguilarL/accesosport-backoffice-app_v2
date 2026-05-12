@@ -259,6 +259,7 @@ export interface EventModalityResponse {
   distance: number
   distanceUnit: 'KM' | 'MI'
   price: number
+  priceWithoutShirt?: number | null
   capacity: number
   registeredCount: number
   availableSpots: number
@@ -269,6 +270,7 @@ export interface CreateModalityRequest {
   distance: number
   distanceUnit: 'KM' | 'MI'
   price: number
+  priceWithoutShirt?: number | null
   capacity: number
 }
 
@@ -288,4 +290,5 @@ export interface ParticipantInEventResponse {
   kitPickedUp: boolean
   kitPickedUpAt?: string | null
   registeredAt: string
+  wantsShirt: boolean
 }

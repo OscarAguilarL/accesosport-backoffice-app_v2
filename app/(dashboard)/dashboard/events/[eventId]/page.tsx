@@ -62,9 +62,9 @@ const REGISTRATION_STATUS_LABELS: Record<string, string> = {
 }
 
 function exportToCSV(participants: ParticipantInEventResponse[], eventName: string) {
-  const headers = ['Nombre', 'Email', 'Talla', 'Sangre', 'Contacto emergencia', 'Tel. emergencia', 'Estado']
+  const headers = ['Nombre', 'Email', 'Talla', 'Playera', 'Sangre', 'Contacto emergencia', 'Tel. emergencia', 'Estado']
   const rows = participants.map(p => [
-    p.fullName, p.email, p.shirtSize, p.bloodType,
+    p.fullName, p.email, p.shirtSize, p.wantsShirt ? 'Sí' : 'No', p.bloodType,
     p.emergencyContactName, p.emergencyContactPhone, p.status
   ])
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
@@ -87,7 +87,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const [isLoadingParticipants, setIsLoadingParticipants] = useState(false)
   const [eventModalities, setEventModalities] = useState<EventModalityResponse[]>([])
   const [showModalityForm, setShowModalityForm] = useState(false)
-  const [modalityForm, setModalityForm] = useState<CreateModalityRequest>({ name: '', distance: 0, distanceUnit: 'KM', price: 0, capacity: 100 })
+  const [modalityForm, setModalityForm] = useState<CreateModalityRequest>({ name: '', distance: 0, distanceUnit: 'KM', price: 0, priceWithoutShirt: null, capacity: 100 })
   const [isSavingModality, setIsSavingModality] = useState(false)
   const [modalityError, setModalityError] = useState<string | null>(null)
 
@@ -127,7 +127,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     try {
       const created = await modalitiesApi.create(eventId, modalityForm)
       setEventModalities((prev) => [...prev, created])
-      setModalityForm({ name: '', distance: 0, distanceUnit: 'KM', price: 0, capacity: 100 })
+      setModalityForm({ name: '', distance: 0, distanceUnit: 'KM', price: 0, priceWithoutShirt: null, capacity: 100 })
       setShowModalityForm(false)
     } catch (err) {
       setModalityError(err instanceof ApiError ? (err.detail || err.message) : 'Error al crear la modalidad.')
@@ -528,6 +528,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                         />
                       </Field>
                     </div>
+                    <Field>
+                      <FieldLabel htmlFor="mPriceWithoutShirt">Precio sin playera ($)</FieldLabel>
+                      <Input
+                        id="mPriceWithoutShirt"
+                        type="number"
+                        value={modalityForm.priceWithoutShirt ?? ''}
+                        onChange={(e) => setModalityForm({ ...modalityForm, priceWithoutShirt: e.target.value ? parseFloat(e.target.value) : null })}
+                        min={0}
+                        step={0.01}
+                        placeholder="Opcional"
+                      />
+                    </Field>
                     <div className="flex gap-2">
                       <Button type="submit" size="sm" disabled={isSavingModality}>
                         {isSavingModality ? <><Spinner className="mr-2" />Guardando...</> : 'Guardar modalidad'}
@@ -691,6 +703,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                       <TableHead>Nombre completo</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Talla</TableHead>
+                      <TableHead>Playera</TableHead>
                       <TableHead>Grupo sanguíneo</TableHead>
                       <TableHead>Contacto de emergencia</TableHead>
                       <TableHead>Estado</TableHead>
@@ -703,6 +716,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                         <TableCell className="font-medium">{p.fullName}</TableCell>
                         <TableCell>{p.email}</TableCell>
                         <TableCell>{p.shirtSize}</TableCell>
+                        <TableCell>
+                          <span className={p.wantsShirt ? 'text-foreground' : 'text-muted-foreground'}>
+                            {p.wantsShirt ? 'Sí' : 'No'}
+                          </span>
+                        </TableCell>
                         <TableCell>{p.bloodType}</TableCell>
                         <TableCell>
                           {p.emergencyContactName} — {p.emergencyContactPhone}

@@ -31,6 +31,7 @@ const emptyModality = (): ModalityDraft => ({
   distance: 0,
   distanceUnit: 'KM',
   price: 0,
+  priceWithoutShirt: null,
   capacity: 0,
 })
 
@@ -390,6 +391,18 @@ export default function CreateEventPage() {
                           />
                         </Field>
                       </div>
+
+                      <Field>
+                        <FieldLabel htmlFor={`priceWithoutShirt-${m._id}`}>Precio sin playera ($)</FieldLabel>
+                        <Input
+                          id={`priceWithoutShirt-${m._id}`}
+                          type="number"
+                          value={m.priceWithoutShirt ?? ''}
+                          onChange={e => updateModality(m._id, 'priceWithoutShirt', e.target.value ? parseFloat(e.target.value) : null as unknown as number)}
+                          placeholder="Opcional — deja vacío si no aplica"
+                          min={0} step={0.01}
+                        />
+                      </Field>
 
                       <Field>
                         <FieldLabel htmlFor={`capacity-${m._id}`}>Cupo de participantes *</FieldLabel>
