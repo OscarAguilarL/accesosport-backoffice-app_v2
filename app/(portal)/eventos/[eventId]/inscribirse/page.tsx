@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { events as eventsApi, profile as profileApi, registrations as registrationsApi, modalities as modalitiesApi, ApiError } from '@/lib/api'
-import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType, Gender, EventModalityResponse } from '@/lib/types'
+import { events as eventsApi, profile as profileApi, registrations as registrationsApi, modalities as modalitiesApi, categories as categoriesApi, ApiError } from '@/lib/api'
+import type { EventResponse, ParticipantProfileResponse, CreateParticipantProfileRequest, ShirtSize, BloodType, Gender, EventModalityResponse, EventCategoryResponse } from '@/lib/types'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { CheckCircle, ChevronLeft, ScrollText, X } from 'lucide-react'
 
-type Step = 'profile' | 'modality' | 'confirm' | 'success'
+type Step = 'profile' | 'modality' | 'category' | 'confirm' | 'success'
 
 const SHIRT_SIZE_OPTIONS: { value: ShirtSize; label: string }[] = [
   { value: 'SIZE_XS', label: 'XS' },
@@ -72,7 +72,9 @@ export default function InscribirsePage() {
   const [step, setStep] = useState<Step>('profile')
   const [event, setEvent] = useState<EventResponse | null>(null)
   const [eventModalities, setEventModalities] = useState<EventModalityResponse[]>([])
+  const [eventCategories, setEventCategories] = useState<EventCategoryResponse[]>([])
   const [selectedModality, setSelectedModality] = useState<EventModalityResponse | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<EventCategoryResponse | null>(null)
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [ticketCode, setTicketCode] = useState<string>('')
 
@@ -111,14 +113,16 @@ export default function InscribirsePage() {
     Promise.all([
       eventsApi.get(eventId),
       modalitiesApi.list(eventId).catch(() => [] as EventModalityResponse[]),
+      categoriesApi.list(eventId).catch(() => [] as EventCategoryResponse[]),
       profileApi.getParticipant().catch((err) => {
         if (err instanceof ApiError && err.status === 404) return null
         throw err
       }),
     ])
-      .then(([eventData, modalitiesData, profileData]) => {
+      .then(([eventData, modalitiesData, categoriesData, profileData]) => {
         setEvent(eventData)
         setEventModalities(modalitiesData)
+        setEventCategories(categoriesData)
         if (!profileData || !isProfileComplete(profileData)) {
           if (profileData?.shirtSize) {
             setProfileExists(true)
@@ -135,6 +139,8 @@ export default function InscribirsePage() {
           setShowProfileForm(true)
         } else if (modalitiesData.length > 0) {
           setStep('modality')
+        } else if (categoriesData.length > 0) {
+          setStep('category')
         } else {
           setStep('confirm')
         }
@@ -163,6 +169,8 @@ export default function InscribirsePage() {
       setShowProfileForm(false)
       if (eventModalities.length > 0) {
         setStep('modality')
+      } else if (eventCategories.length > 0) {
+        setStep('category')
       } else {
         setStep('confirm')
       }
@@ -177,15 +185,23 @@ export default function InscribirsePage() {
 
   const handleSelectModality = (modality: EventModalityResponse) => {
     setSelectedModality(modality)
+    setSelectedCategory(null)
     setWantsShirt(modality.priceWithoutShirt != null ? null : true)
-    setStep('confirm')
+    const relevantCategories = eventCategories.filter(
+      c => c.modalityId == null || c.modalityId === modality.id
+    )
+    if (relevantCategories.length > 0) {
+      setStep('category')
+    } else {
+      setStep('confirm')
+    }
   }
 
   const handleRegister = async () => {
     setIsRegistering(true)
     setRegisterError(null)
     try {
-      const reg = await registrationsApi.register(eventId, selectedModality?.id, true, wantsShirt ?? true)
+      const reg = await registrationsApi.register(eventId, selectedModality?.id, selectedCategory?.id, true, wantsShirt ?? true)
       setTicketCode(reg.ticketCode)
       setStep('success')
     } catch (err) {
@@ -218,21 +234,33 @@ export default function InscribirsePage() {
   if (!isAuthenticated) return null
 
   const hasModalities = eventModalities.length > 0
+  const relevantCategories = selectedModality
+    ? eventCategories.filter(c => c.modalityId == null || c.modalityId === selectedModality.id)
+    : eventCategories
+  const hasCategories = relevantCategories.length > 0
 
-  const allSteps: { key: Step; label: string; number: number }[] = hasModalities
-    ? [
-        { key: 'profile', label: 'Perfil', number: 1 },
-        { key: 'modality', label: 'Modalidad', number: 2 },
-        { key: 'confirm', label: 'Confirmar', number: 3 },
-        { key: 'success', label: 'Listo', number: 4 },
-      ]
-    : [
-        { key: 'profile', label: 'Perfil', number: 1 },
-        { key: 'confirm', label: 'Confirmar', number: 2 },
-        { key: 'success', label: 'Listo', number: 3 },
-      ]
+  const allSteps: { key: Step; label: string; number: number }[] = (() => {
+    const steps: { key: Step; label: string }[] = [{ key: 'profile', label: 'Perfil' }]
+    if (hasModalities) steps.push({ key: 'modality', label: 'Modalidad' })
+    if (hasCategories || eventCategories.length > 0) steps.push({ key: 'category', label: 'Categoría' })
+    steps.push({ key: 'confirm', label: 'Confirmar' })
+    steps.push({ key: 'success', label: 'Listo' })
+    return steps.map((s, i) => ({ ...s, number: i + 1 }))
+  })()
 
   const currentStepIndex = allSteps.findIndex((s) => s.key === step)
+
+  const participantAge = user?.birthDate
+    ? Math.floor((new Date().getTime() - new Date(user.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : null
+
+  const suggestedCategory = participantAge != null
+    ? relevantCategories.find(c => {
+        const minOk = c.minAge == null || participantAge >= c.minAge
+        const maxOk = c.maxAge == null || participantAge <= c.maxAge
+        return minOk && maxOk
+      }) ?? null
+    : null
 
   const effectivePrice = selectedModality
     ? (wantsShirt === false && selectedModality.priceWithoutShirt != null
@@ -496,6 +524,71 @@ export default function InscribirsePage() {
         </Card>
       )}
 
+      {/* Step: Category selection */}
+      {step === 'category' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Elige tu categoría</CardTitle>
+            <CardDescription>
+              {suggestedCategory
+                ? `Sugerida para tu edad (${participantAge} años): ${suggestedCategory.name}`
+                : 'Selecciona la categoría en la que deseas competir.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {relevantCategories.map((c) => {
+              const isSuggested = c.id === suggestedCategory?.id
+              const isSelected = c.id === selectedCategory?.id
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCategory(c)}
+                  className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                    isSelected
+                      ? 'border-primary bg-primary/10'
+                      : 'hover:border-primary hover:bg-primary/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{c.name}</p>
+                      {(c.minAge != null || c.maxAge != null) && (
+                        <p className="text-sm text-muted-foreground">
+                          {c.minAge != null && c.maxAge != null
+                            ? `${c.minAge}–${c.maxAge} años`
+                            : c.minAge != null
+                            ? `${c.minAge}+ años`
+                            : `Hasta ${c.maxAge} años`}
+                        </p>
+                      )}
+                    </div>
+                    {isSuggested && (
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        Sugerida
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+            <div className="flex gap-2 pt-1">
+              {hasModalities && (
+                <Button variant="outline" className="flex-1" onClick={() => setStep('modality')}>
+                  Atrás
+                </Button>
+              )}
+              <Button
+                className="flex-1"
+                disabled={!selectedCategory}
+                onClick={() => setStep('confirm')}
+              >
+                Continuar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Waiver Modal */}
       {showWaiverModal && event && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -553,6 +646,11 @@ export default function InscribirsePage() {
                 <div className="mt-2 rounded-md bg-primary/10 p-2">
                   <p className="text-sm font-medium">Modalidad: {selectedModality.name}</p>
                   <p className="text-xs text-muted-foreground">{selectedModality.distance} {selectedModality.distanceUnit}</p>
+                </div>
+              )}
+              {selectedCategory && (
+                <div className="mt-1 rounded-md bg-secondary/40 p-2">
+                  <p className="text-sm font-medium">Categoría: {selectedCategory.name}</p>
                 </div>
               )}
               <p className="text-xl font-bold mt-2">
@@ -637,6 +735,11 @@ export default function InscribirsePage() {
                 Cambiar modalidad
               </Button>
             )}
+            {(hasCategories || eventCategories.length > 0) && (
+              <Button variant="outline" className="w-full" onClick={() => setStep('category')}>
+                Cambiar categoría
+              </Button>
+            )}
 
             {effectivePrice > 0 ? (
               <div className="space-y-3">
@@ -683,6 +786,9 @@ export default function InscribirsePage() {
               <p className="text-sm text-muted-foreground">{formatDate(event.eventDate)}</p>
               {selectedModality && (
                 <p className="text-sm text-muted-foreground">Modalidad: {selectedModality.name}</p>
+              )}
+              {selectedCategory && (
+                <p className="text-sm text-muted-foreground">Categoría: {selectedCategory.name}</p>
               )}
               <p className="text-xs text-muted-foreground font-mono">
                 Folio: {ticketCode}

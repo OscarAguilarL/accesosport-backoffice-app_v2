@@ -10,9 +10,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
-import { events as eventsApi, ApiError } from '@/lib/api'
-import type { CreateEventRequest, CreateModalityRequest } from '@/lib/types'
-import { ArrowLeft, Calendar, MapPin, Users, Activity, ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { events as eventsApi, categories as categoriesApi, ApiError } from '@/lib/api'
+import type { CreateEventRequest, CreateModalityRequest, CreateCategoryRequest, EventModalityResponse } from '@/lib/types'
+import { ArrowLeft, Calendar, MapPin, Users, Activity, ImageIcon, Plus, Trash2, Tag } from 'lucide-react'
 import { ImageDropzone } from '@/components/ui/image-dropzone'
 
 const STEPS = [
@@ -20,10 +20,12 @@ const STEPS = [
   { title: 'Fecha y Ubicación',   description: 'Cuándo y dónde se realizará' },
   { title: 'Inscripciones',       description: 'Período de inscripción' },
   { title: 'Modalidades',         description: 'Distancias, precios y cupos' },
+  { title: 'Categorías',          description: 'Categorías por edad (opcional)' },
   { title: 'Imágenes',            description: 'Portada y galería del evento' },
 ]
 
 type ModalityDraft = CreateModalityRequest & { _id: string }
+type CategoryDraft = CreateCategoryRequest & { _id: string }
 
 const emptyModality = (): ModalityDraft => ({
   _id: crypto.randomUUID(),
@@ -33,6 +35,14 @@ const emptyModality = (): ModalityDraft => ({
   price: 0,
   priceWithoutShirt: null,
   capacity: 0,
+})
+
+const emptyCategory = (): CategoryDraft => ({
+  _id: crypto.randomUUID(),
+  modalityId: null,
+  name: '',
+  minAge: null,
+  maxAge: null,
 })
 
 type GalleryItem = { file: File; preview: string }
@@ -48,10 +58,17 @@ export default function CreateEventPage() {
   const [location, setLocation] = useState({ eventDate: '', place: '', city: '', country: '', latitude: '', longitude: '' })
   const [registration, setRegistration] = useState({ registrationStartDate: '', registrationEndDate: '' })
   const [modalities, setModalities] = useState<ModalityDraft[]>([emptyModality()])
+  const [categories, setCategories] = useState<CategoryDraft[]>([])
+  const [createdModalities, setCreatedModalities] = useState<EventModalityResponse[]>([])
 
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
+
+  const addCategory = () => setCategories(prev => [...prev, emptyCategory()])
+  const removeCategory = (id: string) => setCategories(prev => prev.filter(c => c._id !== id))
+  const updateCategory = (id: string, field: keyof CreateCategoryRequest, value: string | number | null) =>
+    setCategories(prev => prev.map(c => c._id === id ? { ...c, [field]: value } : c))
 
   const addModality = () => setModalities(prev => [...prev, emptyModality()])
 
@@ -96,9 +113,34 @@ export default function CreateEventPage() {
       }
       const event = await eventsApi.create(payload)
       setCreatedEventId(event.id!)
+      setCreatedModalities(event.modalities ?? [])
       setStep(4)
     } catch (err) {
       setError(err instanceof ApiError ? (err.detail || err.message) : 'Error al crear el evento.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCategoriesSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createdEventId) return
+    setIsLoading(true)
+    setError(null)
+    try {
+      for (const cat of categories) {
+        if (cat.name.trim()) {
+          await categoriesApi.create(createdEventId, {
+            name: cat.name,
+            modalityId: cat.modalityId || null,
+            minAge: cat.minAge,
+            maxAge: cat.maxAge,
+          })
+        }
+      }
+      setStep(5)
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.detail || err.message) : 'Error al guardar las categorías.')
     } finally {
       setIsLoading(false)
     }
@@ -445,8 +487,120 @@ export default function CreateEventPage() {
           </form>
         )}
 
-        {/* Step 4: Images */}
+        {/* Step 4: Categories */}
         {step === 4 && (
+          <form onSubmit={handleCategoriesSubmit}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  {STEPS[4].title}
+                </CardTitle>
+                <CardDescription>
+                  Define categorías por rango de edad (ej. Libre, Master +40, Veterano +55). Opcional — si no defines categorías, el evento funciona sin ellas.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {categories.map((c, idx) => (
+                    <div key={c._id} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Categoría {idx + 1}</span>
+                        <Button
+                          type="button" variant="ghost" size="sm"
+                          onClick={() => removeCategory(c._id)}
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Field>
+                        <FieldLabel htmlFor={`cat-name-${c._id}`}>Nombre *</FieldLabel>
+                        <Input
+                          id={`cat-name-${c._id}`}
+                          value={c.name}
+                          onChange={e => updateCategory(c._id, 'name', e.target.value)}
+                          placeholder="Libre, Master, Veterano..."
+                          required
+                        />
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor={`cat-modality-${c._id}`}>Modalidad (opcional)</FieldLabel>
+                        <select
+                          id={`cat-modality-${c._id}`}
+                          value={c.modalityId ?? ''}
+                          onChange={e => updateCategory(c._id, 'modalityId', e.target.value || null)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          <option value="">Aplica a todas las modalidades</option>
+                          {createdModalities.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor={`cat-min-${c._id}`}>Edad mínima</FieldLabel>
+                          <Input
+                            id={`cat-min-${c._id}`}
+                            type="number"
+                            value={c.minAge ?? ''}
+                            onChange={e => updateCategory(c._id, 'minAge', e.target.value ? parseInt(e.target.value) : null)}
+                            placeholder="Sin límite"
+                            min={0} max={120}
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor={`cat-max-${c._id}`}>Edad máxima</FieldLabel>
+                          <Input
+                            id={`cat-max-${c._id}`}
+                            type="number"
+                            value={c.maxAge ?? ''}
+                            onChange={e => updateCategory(c._id, 'maxAge', e.target.value ? parseInt(e.target.value) : null)}
+                            placeholder="Sin límite"
+                            min={0} max={120}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+
+                  <Button
+                    type="button" variant="outline" className="w-full"
+                    onClick={addCategory}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar categoría
+                  </Button>
+
+                  <div className="flex justify-between pt-2">
+                    <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
+                      Atrás
+                    </Button>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setStep(5)} disabled={isLoading}>
+                        Omitir
+                      </Button>
+                      <Button type="submit" disabled={isLoading}>
+                        {isLoading ? (
+                          <><Spinner className="mr-2" /> Guardando...</>
+                        ) : (
+                          'Continuar'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </form>
+        )}
+
+        {/* Step 5: Images */}
+        {step === 5 && (
           <form onSubmit={handleImagesSubmit}>
             <div className="space-y-6">
               <Card>

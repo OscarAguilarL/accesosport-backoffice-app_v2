@@ -19,6 +19,8 @@ import type {
   RegistrationResponse,
   EventModalityResponse,
   CreateModalityRequest,
+  EventCategoryResponse,
+  CreateCategoryRequest,
   CheckinTokenResponse,
   CheckinTokenValidationResponse,
 } from './types'
@@ -244,6 +246,23 @@ export const profile = {
     }),
 }
 
+// Categories endpoints
+export const categories = {
+  list: (eventId: string) =>
+    fetchApi<EventCategoryResponse[]>(`/api/v1/events/${eventId}/categories`),
+
+  create: (eventId: string, data: CreateCategoryRequest) =>
+    fetchApi<EventCategoryResponse>(`/api/v1/events/${eventId}/categories`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (eventId: string, categoryId: string) =>
+    fetchApi<void>(`/api/v1/events/${eventId}/categories/${categoryId}`, {
+      method: 'DELETE',
+    }),
+}
+
 // Modalities endpoints
 export const modalities = {
   list: (eventId: string) =>
@@ -266,10 +285,10 @@ export const registrations = {
   getByEvent: (eventId: string) =>
     fetchApi<ParticipantInEventResponse[]>(`/api/v1/events/${eventId}/registrations`),
 
-  register: (eventId: string, modalityId?: string, waiverAccepted?: boolean, wantsShirt?: boolean) =>
+  register: (eventId: string, modalityId?: string, categoryId?: string, waiverAccepted?: boolean, wantsShirt?: boolean) =>
     fetchApi<RegistrationResponse>(`/api/v1/events/${eventId}/register`, {
       method: 'POST',
-      body: JSON.stringify({ modalityId, waiverAccepted: waiverAccepted ?? false, wantsShirt: wantsShirt ?? true }),
+      body: JSON.stringify({ modalityId, categoryId: categoryId ?? null, waiverAccepted: waiverAccepted ?? false, wantsShirt: wantsShirt ?? true }),
     }),
 
   cancel: (eventId: string, registrationId: string) =>

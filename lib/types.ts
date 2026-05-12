@@ -274,6 +274,22 @@ export interface CreateModalityRequest {
   capacity: number
 }
 
+export interface EventCategoryResponse {
+  id: string
+  eventId: string
+  modalityId?: string | null
+  name: string
+  minAge?: number | null
+  maxAge?: number | null
+}
+
+export interface CreateCategoryRequest {
+  modalityId?: string | null
+  name: string
+  minAge?: number | null
+  maxAge?: number | null
+}
+
 export interface CheckinTokenResponse {
   token: string
   eventId: string
