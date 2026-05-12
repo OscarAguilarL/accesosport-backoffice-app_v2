@@ -55,7 +55,7 @@ export default function CreateEventPage() {
   const [createdEventId, setCreatedEventId] = useState<string | null>(null)
 
   const [basicInfo, setBasicInfo] = useState({ name: '', description: '' })
-  const [location, setLocation] = useState({ eventDate: '', place: '', city: '', country: '', latitude: '', longitude: '' })
+  const [location, setLocation] = useState({ eventDate: '', place: '', city: '', country: '' })
   const [registration, setRegistration] = useState({ registrationStartDate: '', registrationEndDate: '' })
   const [modalities, setModalities] = useState<ModalityDraft[]>([emptyModality()])
   const [categories, setCategories] = useState<CategoryDraft[]>([])
@@ -105,8 +105,6 @@ export default function CreateEventPage() {
         place: location.place,
         city: location.city || undefined,
         country: location.country || undefined,
-        latitude: location.latitude ? parseFloat(location.latitude) : undefined,
-        longitude: location.longitude ? parseFloat(location.longitude) : undefined,
         registrationStartDate: registration.registrationStartDate,
         registrationEndDate: registration.registrationEndDate,
         modalities: modalities.map(({ _id, ...m }) => m),
@@ -285,20 +283,6 @@ export default function CreateEventPage() {
                       <Input id="country" value={location.country}
                         onChange={e => setLocation(p => ({ ...p, country: e.target.value }))}
                         placeholder="México" />
-                    </Field>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel htmlFor="latitude">Latitud</FieldLabel>
-                      <Input id="latitude" type="number" value={location.latitude}
-                        onChange={e => setLocation(p => ({ ...p, latitude: e.target.value }))}
-                        placeholder="19.4326" min={-90} max={90} step="any" />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="longitude">Longitud</FieldLabel>
-                      <Input id="longitude" type="number" value={location.longitude}
-                        onChange={e => setLocation(p => ({ ...p, longitude: e.target.value }))}
-                        placeholder="-99.1332" min={-180} max={180} step="any" />
                     </Field>
                   </div>
                   <div className="flex justify-between">

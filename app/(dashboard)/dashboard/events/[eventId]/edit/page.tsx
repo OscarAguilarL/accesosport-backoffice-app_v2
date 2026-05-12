@@ -54,8 +54,6 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
           place: data.location?.place,
           city: data.location?.city,
           country: data.location?.country,
-          latitude: data.location?.latitude,
-          longitude: data.location?.longitude,
           registrationStartDate: toDatetimeLocalValue(data.registrationPeriod?.start),
           registrationEndDate: toDatetimeLocalValue(data.registrationPeriod?.end),
           waiverTemplate: data.waiverTemplate,
@@ -243,34 +241,6 @@ export default function EditEventPage({ params }: { params: Promise<{ eventId: s
                   </Field>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="latitude">Latitud</FieldLabel>
-                    <Input
-                      id="latitude"
-                      type="number"
-                      value={formData.latitude ?? ''}
-                      onChange={(e) => update('latitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                      placeholder="19.4326"
-                      min={-90}
-                      max={90}
-                      step="any"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="longitude">Longitud</FieldLabel>
-                    <Input
-                      id="longitude"
-                      type="number"
-                      value={formData.longitude ?? ''}
-                      onChange={(e) => update('longitude', e.target.value ? parseFloat(e.target.value) : undefined)}
-                      placeholder="-99.1332"
-                      min={-180}
-                      max={180}
-                      step="any"
-                    />
-                  </Field>
-                </div>
               </FieldGroup>
             </CardContent>
           </Card>

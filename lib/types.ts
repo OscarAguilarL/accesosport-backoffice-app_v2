@@ -31,8 +31,6 @@ export interface LocationDto {
   place?: string
   city?: string
   country?: string
-  latitude?: number
-  longitude?: number
   fullAddress?: string
 }
 
@@ -98,8 +96,6 @@ export interface CreateEventRequest {
   place: string
   city?: string
   country?: string
-  latitude?: number
-  longitude?: number
   registrationStartDate: string
   registrationEndDate: string
   modalities: CreateModalityRequest[]
@@ -112,8 +108,6 @@ export interface UpdateEventRequest {
   place?: string
   city?: string
   country?: string
-  latitude?: number
-  longitude?: number
   registrationStartDate?: string
   registrationEndDate?: string
   waiverTemplate?: string
