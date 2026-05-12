@@ -67,7 +67,7 @@ export default function InscribirsePage() {
   const params = useParams()
   const router = useRouter()
   const eventId = params.eventId as string
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: isAuthLoading, refreshUser } = useAuth()
 
   const [step, setStep] = useState<Step>('profile')
   const [event, setEvent] = useState<EventResponse | null>(null)
@@ -155,7 +155,9 @@ export default function InscribirsePage() {
       if (profileExists) {
         await profileApi.updateParticipant(payload)
       } else {
-        await profileApi.createParticipant(payload)
+        const result = await profileApi.createParticipant(payload)
+        localStorage.setItem('accessToken', result.token)
+        await refreshUser()
       }
       setShowProfileForm(false)
       if (eventModalities.length > 0) {

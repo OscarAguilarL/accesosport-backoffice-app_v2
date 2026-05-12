@@ -238,6 +238,10 @@ export interface ParticipantProfileResponse {
   updatedAt?: string
 }
 
+export interface ParticipantProfileWithTokenResponse extends ParticipantProfileResponse {
+  token: string
+}
+
 export interface CreateParticipantProfileRequest {
   shirtSize: ShirtSize
   emergencyContactName: string

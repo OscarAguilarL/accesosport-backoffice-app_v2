@@ -13,6 +13,7 @@ import type {
   SavePersonalDataRequest,
   SaveUserAddressRequest,
   ParticipantProfileResponse,
+  ParticipantProfileWithTokenResponse,
   CreateParticipantProfileRequest,
   ParticipantInEventResponse,
   RegistrationResponse,
@@ -229,7 +230,7 @@ export const profile = {
     fetchApi<ParticipantProfileResponse>('/api/v1/user/profile/participant'),
 
   createParticipant: (data: CreateParticipantProfileRequest) =>
-    fetchApi<ParticipantProfileResponse>('/api/v1/user/profile/participant', {
+    fetchApi<ParticipantProfileWithTokenResponse>('/api/v1/user/profile/participant', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -276,6 +277,11 @@ export const registrations = {
 
   getMyRegistrations: () =>
     fetchApi<RegistrationResponse[]>('/api/v1/user/registrations'),
+
+  resendTicket: (registrationId: string) =>
+    fetchApi<void>(`/api/v1/user/registrations/${registrationId}/resend-ticket`, {
+      method: 'POST',
+    }),
 
   downloadTicket: async (registrationId: string): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null

@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { CalendarDays, Ticket, Search, Download } from 'lucide-react'
+import { CalendarDays, Ticket, Search, Download, Mail } from 'lucide-react'
 
 function formatDate(dateString?: string): string {
   if (!dateString) return '-'
@@ -57,6 +57,9 @@ export default function MisInscripcionesPage() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null)
+  const [resendError, setResendError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -93,6 +96,25 @@ export default function MisInscripcionesPage() {
       )
     } finally {
       setDownloading(null)
+    }
+  }
+
+  const handleResendTicket = async (registrationId: string) => {
+    setResending(registrationId)
+    setResendSuccess(null)
+    setResendError(null)
+    try {
+      await registrationsApi.resendTicket(registrationId)
+      setResendSuccess(registrationId)
+      setTimeout(() => setResendSuccess(null), 5000)
+    } catch (err) {
+      setResendError(
+        err instanceof ApiError
+          ? (err.detail || err.message)
+          : 'Error al enviar el boleto.'
+      )
+    } finally {
+      setResending(null)
     }
   }
 
@@ -154,6 +176,12 @@ export default function MisInscripcionesPage() {
         </div>
       )}
 
+      {resendError && (
+        <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {resendError}
+        </div>
+      )}
+
       {registrations.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 text-muted-foreground">
           <Ticket className="h-12 w-12 opacity-40" />
@@ -175,6 +203,8 @@ export default function MisInscripcionesPage() {
             const isCancelling = cancelling === reg.id
             const isConfirmed = reg.status === 'CONFIRMED'
             const isDownloading = downloading === reg.id
+            const isResending = resending === reg.id
+            const resendSent = resendSuccess === reg.id
 
             return (
               <Card key={reg.id} className="flex flex-col">
@@ -198,7 +228,7 @@ export default function MisInscripcionesPage() {
                   </div>
 
                   {isConfirmed && (
-                    <div className="pt-2">
+                    <div className="pt-2 flex flex-col gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -218,6 +248,30 @@ export default function MisInscripcionesPage() {
                           </>
                         )}
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full gap-2"
+                        disabled={isResending}
+                        onClick={() => handleResendTicket(reg.id)}
+                      >
+                        {isResending ? (
+                          <>
+                            <Spinner className="mr-1" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4" />
+                            Reenviar por correo
+                          </>
+                        )}
+                      </Button>
+                      {resendSent && (
+                        <p className="text-xs text-green-600 text-center">
+                          Boleto enviado a tu correo registrado
+                        </p>
+                      )}
                     </div>
                   )}
 
