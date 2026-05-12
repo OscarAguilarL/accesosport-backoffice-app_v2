@@ -274,6 +274,18 @@ export interface CreateModalityRequest {
   capacity: number
 }
 
+export interface CheckinTokenResponse {
+  token: string
+  eventId: string
+  expiresAt: string
+}
+
+export interface CheckinTokenValidationResponse {
+  valid: boolean
+  eventId: string
+  eventName: string
+}
+
 export interface ParticipantInEventResponse {
   registrationId: string
   participantId: string

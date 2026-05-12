@@ -19,6 +19,8 @@ import type {
   RegistrationResponse,
   EventModalityResponse,
   CreateModalityRequest,
+  CheckinTokenResponse,
+  CheckinTokenValidationResponse,
 } from './types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/proxy'
@@ -303,13 +305,31 @@ export const registrations = {
 
 // Check-in endpoints
 export const checkin = {
-  findByCode: (ticketCode: string) =>
-    fetchApi<ParticipantInEventResponse>(`/api/v1/registrations/${ticketCode}`),
+  findByCode: (ticketCode: string, token?: string) =>
+    fetchApi<ParticipantInEventResponse>(
+      `/api/v1/registrations/${ticketCode}${token ? `?token=${token}` : ''}`
+    ),
 
-  markKitDelivered: (ticketCode: string) =>
-    fetchApi<ParticipantInEventResponse>(`/api/v1/registrations/${ticketCode}/kit-pickup`, {
-      method: 'PUT',
+  markKitDelivered: (ticketCode: string, token?: string) =>
+    fetchApi<ParticipantInEventResponse>(
+      `/api/v1/registrations/${ticketCode}/kit-pickup${token ? `?token=${token}` : ''}`,
+      { method: 'PUT' }
+    ),
+
+  getEventRegistrations: (eventId: string, token?: string) =>
+    fetchApi<ParticipantInEventResponse[]>(
+      `/api/v1/events/${eventId}/registrations${token ? `?token=${token}` : ''}`
+    ),
+
+  generateToken: (eventId: string) =>
+    fetchApi<CheckinTokenResponse>(`/api/v1/events/${eventId}/checkin-token`, {
+      method: 'POST',
     }),
+
+  validateToken: (eventId: string, token: string) =>
+    fetchApi<CheckinTokenValidationResponse>(
+      `/api/v1/public/checkin/validate?eventId=${eventId}&token=${token}`
+    ),
 }
 
 export { ApiError }

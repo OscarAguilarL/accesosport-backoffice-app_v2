@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, use } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -16,9 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { checkin as checkinApi, registrations as registrationsApi } from '@/lib/api'
+import { checkin as checkinApi } from '@/lib/api'
 import type { ParticipantInEventResponse } from '@/lib/types'
-import { ArrowLeft, CheckCircle2, Package, QrCode, Search, XCircle } from 'lucide-react'
+import { CheckCircle2, Package, QrCode, Search, XCircle, AlertTriangle } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -50,11 +48,15 @@ interface SessionEntry {
 
 type SearchError = 'not_found' | 'cancelled' | null
 
-export default function CheckinPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default function PublicCheckinPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = use(params)
-  const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token') ?? ''
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const [isValidating, setIsValidating] = useState(true)
+  const [tokenValid, setTokenValid] = useState(false)
+  const [eventName, setEventName] = useState('')
 
   const [code, setCode] = useState('')
   const [isSearching, setIsSearching] = useState(false)
@@ -75,13 +77,29 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
   const scannerRef = useRef<any>(null)
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) router.push('/login')
-  }, [isAuthenticated, authLoading, router])
+    const validate = async () => {
+      if (!token) {
+        setIsValidating(false)
+        return
+      }
+      try {
+        const result = await checkinApi.validateToken(eventId, token)
+        setTokenValid(result.valid)
+        setEventName(result.eventName ?? '')
+      } catch {
+        setTokenValid(false)
+      } finally {
+        setIsValidating(false)
+      }
+    }
+    validate()
+  }, [eventId, token])
 
   useEffect(() => {
+    if (!tokenValid) return
     const fetchStats = async () => {
       try {
-        const list = await registrationsApi.getByEvent(eventId)
+        const list = await checkinApi.getEventRegistrations(eventId, token)
         const confirmed = list.filter(p => p.status === 'CONFIRMED')
         setTotalConfirmed(confirmed.length)
         setKitsDelivered(confirmed.filter(p => p.kitPickedUp).length)
@@ -92,7 +110,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
       }
     }
     fetchStats()
-  }, [eventId])
+  }, [eventId, tokenValid])
 
   useEffect(() => {
     if (!showScanner) return
@@ -111,7 +129,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
 
       const { Html5QrcodeScanner } = await import('html5-qrcode')
       scanner = new Html5QrcodeScanner(
-        'qr-reader',
+        'qr-reader-public',
         { fps: 10, qrbox: { width: 250, height: 250 } },
         false
       )
@@ -144,7 +162,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
     setSearchError(null)
 
     try {
-      const result = await checkinApi.findByCode(searchCode.trim())
+      const result = await checkinApi.findByCode(searchCode.trim(), token)
       if (result.status === 'CANCELLED') {
         setSearchError('cancelled')
       } else {
@@ -163,7 +181,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
     setIsDelivering(true)
     setDeliveryError(false)
     try {
-      const updated = await checkinApi.markKitDelivered(participant.ticketCode)
+      const updated = await checkinApi.markKitDelivered(participant.ticketCode, token)
       setParticipant(updated)
       setKitsDelivered(prev => prev + 1)
       setSessionHistory(prev => [
@@ -191,7 +209,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
     setShowScanner(false)
   }
 
-  if (authLoading) {
+  if (isValidating) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Spinner className="h-8 w-8" />
@@ -199,20 +217,23 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
     )
   }
 
-  if (!isAuthenticated) return null
+  if (!tokenValid) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 px-4 bg-background">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <h1 className="text-xl font-bold text-center">Enlace no válido o expirado</h1>
+        <p className="text-muted-foreground text-center max-w-sm">
+          Este enlace ha expirado o no es válido. Pide al organizador que genere uno nuevo desde el detalle del evento.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header fijo, sin sidebar */}
       <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
         <div className="flex h-14 items-center justify-between px-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/dashboard/events/${eventId}`}>
-              <ArrowLeft className="mr-1.5 h-4 w-4" />
-              Volver
-            </Link>
-          </Button>
-          <span className="font-semibold">Check-in de kits</span>
+          <span className="font-semibold truncate max-w-[60%]">{eventName || 'Check-in'}</span>
           <div className="flex items-center gap-1.5 text-sm">
             <Package className="h-4 w-4 text-muted-foreground" />
             {isLoadingStats ? (
@@ -226,11 +247,9 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
         </div>
       </header>
 
-      {/* Contenido principal */}
       <main className="flex-1 px-4 py-6">
         <div className="mx-auto max-w-lg space-y-5">
 
-          {/* Zona de búsqueda */}
           <Card>
             <CardContent className="pt-5 space-y-3">
               <Input
@@ -263,13 +282,9 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
                   <QrCode className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-center text-xs text-muted-foreground">
-                También puedes usar un lector QR USB — escaneará directamente aquí
-              </p>
             </CardContent>
           </Card>
 
-          {/* Alertas de error */}
           {deliveryError && (
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
@@ -303,7 +318,6 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
             </Alert>
           )}
 
-          {/* Tarjeta del participante */}
           {participant && (
             <Card>
               <CardHeader className="pb-2">
@@ -325,7 +339,6 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
                   </p>
                 </div>
 
-                {/* Kit type — highlighted for organizer at delivery */}
                 <div className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
                   participant.wantsShirt
                     ? 'bg-primary/10 text-primary'
@@ -403,7 +416,6 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
             </Card>
           )}
 
-          {/* Historial de sesión */}
           {sessionHistory.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -425,7 +437,6 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
         </div>
       </main>
 
-      {/* Modal del escáner QR */}
       <Dialog open={showScanner} onOpenChange={handleCloseScanner}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -434,7 +445,7 @@ export default function CheckinPage({ params }: { params: Promise<{ eventId: str
               Escanear código QR
             </DialogTitle>
           </DialogHeader>
-          <div id="qr-reader" className="w-full" />
+          <div id="qr-reader-public" className="w-full" />
         </DialogContent>
       </Dialog>
     </div>

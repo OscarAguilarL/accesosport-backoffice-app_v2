@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useRef, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout'
@@ -19,6 +19,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,8 +33,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@/components/ui/empty'
-import { events as eventsApi, registrations as registrationsApi, modalities as modalitiesApi, ApiError } from '@/lib/api'
-import type { EventResponse, ParticipantInEventResponse, EventModalityResponse, CreateModalityRequest } from '@/lib/types'
+import { events as eventsApi, registrations as registrationsApi, modalities as modalitiesApi, checkin as checkinApi, ApiError } from '@/lib/api'
+import type { EventResponse, ParticipantInEventResponse, EventModalityResponse, CreateModalityRequest, CheckinTokenResponse } from '@/lib/types'
 import { EVENT_STATUS_LABELS } from '@/lib/types'
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -37,7 +43,6 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Pencil,
   Globe,
   Play,
@@ -49,6 +54,9 @@ import {
   ScanLine,
   Plus,
   Trash2,
+  QrCode,
+  Copy,
+  Check,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -90,6 +98,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const [modalityForm, setModalityForm] = useState<CreateModalityRequest>({ name: '', distance: 0, distanceUnit: 'KM', price: 0, priceWithoutShirt: null, capacity: 100 })
   const [isSavingModality, setIsSavingModality] = useState(false)
   const [modalityError, setModalityError] = useState<string | null>(null)
+
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [qrTokenData, setQrTokenData] = useState<CheckinTokenResponse | null>(null)
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -197,6 +211,37 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
     }
   }
 
+  const checkinUrl = (token: string) => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    return `${appUrl}/checkin/${eventId}?token=${token}`
+  }
+
+  const handleGenerateQr = async () => {
+    setIsGeneratingQr(true)
+    try {
+      const data = await checkinApi.generateToken(eventId)
+      setQrTokenData(data)
+      setShowQrModal(true)
+      setTimeout(async () => {
+        if (qrCanvasRef.current) {
+          const QRCode = await import('qrcode')
+          await QRCode.toCanvas(qrCanvasRef.current, checkinUrl(data.token), { width: 240 })
+        }
+      }, 50)
+    } catch (err) {
+      alert(err instanceof ApiError ? (err.detail || err.message) : 'Error al generar el QR.')
+    } finally {
+      setIsGeneratingQr(false)
+    }
+  }
+
+  const handleCopyLink = async () => {
+    if (!qrTokenData) return
+    await navigator.clipboard.writeText(checkinUrl(qrTokenData.token))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout title="Cargando..." description="">
@@ -252,12 +297,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
             </Button>
           )}
           {(event.status === 'REGISTRATION_CLOSED' || event.status === 'IN_PROGRESS') && (
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/events/${eventId}/checkin`}>
-                <ScanLine className="mr-2 h-4 w-4" />
-                Check-in de kits
-              </Link>
-            </Button>
+            <>
+              <Button variant="outline" asChild>
+                <Link href={`/dashboard/events/${eventId}/checkin`}>
+                  <ScanLine className="mr-2 h-4 w-4" />
+                  Check-in de kits
+                </Link>
+              </Button>
+              <Button variant="outline" onClick={handleGenerateQr} disabled={isGeneratingQr}>
+                {isGeneratingQr ? <Spinner className="mr-2 h-4 w-4" /> : <QrCode className="mr-2 h-4 w-4" />}
+                QR para voluntarios
+              </Button>
+            </>
           )}
           {event.status === 'IN_PROGRESS' && (
             <AlertDialog>
@@ -748,6 +799,35 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
           </Card>
         </div>
       )}
+      {/* QR Modal */}
+      <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              QR para voluntarios
+            </DialogTitle>
+          </DialogHeader>
+          {qrTokenData && (
+            <div className="flex flex-col items-center gap-4 py-2">
+              <canvas ref={qrCanvasRef} className="rounded-lg border" />
+              <div className="w-full space-y-2 text-sm text-center">
+                <p className="text-muted-foreground break-all text-xs">
+                  {checkinUrl(qrTokenData.token)}
+                </p>
+                <p className="text-muted-foreground">
+                  Expira el{' '}
+                  {format(new Date(qrTokenData.expiresAt), "d MMM yyyy 'a las' HH:mm", { locale: es })}
+                </p>
+              </div>
+              <Button className="w-full" variant="outline" onClick={handleCopyLink}>
+                {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                {copied ? 'Enlace copiado' : 'Copiar enlace'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }
