@@ -1,42 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.98 0 0);
+  --background: oklch(0.984 0.003 247);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.2 25);
+  --primary: oklch(0.546 0.243 264);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0 0);
+  --secondary: oklch(0.968 0.007 248);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.96 0 0);
+  --muted: oklch(0.968 0.007 248);
   --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.55 0.2 25);
+  --accent: oklch(0.546 0.243 264);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.55 0.2 25);
-  --chart-1: oklch(0.55 0.2 25);
+  --border: oklch(0.929 0.013 256);
+  --input: oklch(0.929 0.013 256);
+  --ring: oklch(0.546 0.243 264);
+  --chart-1: oklch(0.546 0.243 264);
   --chart-2: oklch(0.6 0.15 180);
   --chart-3: oklch(0.5 0.1 260);
   --chart-4: oklch(0.75 0.15 85);
   --chart-5: oklch(0.7 0.18 50);
   --radius: 0.5rem;
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.85 0 0);
-  --sidebar-primary: oklch(0.55 0.2 25);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.42 0.006 248);
+  --sidebar-primary: oklch(0.546 0.243 264);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.2 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.25 0 0);
-  --sidebar-ring: oklch(0.55 0.2 25);
+  --sidebar-accent: oklch(0.968 0.007 248);
+  --sidebar-accent-foreground: oklch(0.208 0.042 266);
+  --sidebar-border: oklch(0.929 0.013 256);
+  --sidebar-ring: oklch(0.546 0.243 264);
   --success: oklch(0.6 0.18 145);
   --success-foreground: oklch(0.98 0 0);
   --warning: oklch(0.75 0.18 85);
@@ -134,4 +135,12 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@utility font-barlow {
+  font-family: 'Barlow', sans-serif;
+}
+
+@utility font-barlow-condensed {
+  font-family: 'Barlow Condensed', sans-serif;
 }

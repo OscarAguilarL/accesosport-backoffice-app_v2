@@ -8,32 +8,59 @@ import { Button } from '@/components/ui/button'
 import { events } from '@/lib/api'
 import type { EventSummaryResponse } from '@/lib/types'
 import { EVENT_STATUS_LABELS } from '@/lib/types'
-import { Calendar, Users, TrendingUp, PlusCircle, ArrowRight } from 'lucide-react'
+import { Calendar, Users, TrendingUp, PlusCircle, ArrowRight, Clock, LayoutGrid } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { Spinner } from '@/components/ui/spinner'
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconClass,
+  bgClass,
+}: {
+  title: string
+  value: number
+  subtitle: string
+  icon: React.ElementType
+  iconClass: string
+  bgClass: string
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="mt-1 text-3xl font-bold text-foreground">{value}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${bgClass}`}>
+            <Icon className={`h-5 w-5 ${iconClass}`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function DashboardPage() {
   const [myEvents, setMyEvents] = useState<EventSummaryResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const data = await events.listMyEvents()
-        setMyEvents(data)
-      } catch (error) {
-        console.log('[v0] Error fetching events:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchEvents()
+    events.listMyEvents()
+      .then(setMyEvents)
+      .catch((e) => console.log('[dashboard] Error fetching events:', e))
+      .finally(() => setIsLoading(false))
   }, [])
 
   const stats = {
     totalEvents: myEvents.length,
-    activeEvents: myEvents.filter(e => e.status === 'OPEN_REGISTRATION' || e.status === 'PUBLISHED').length,
-    totalRegistrations: myEvents.reduce((acc, e) => acc + (e.totalAvailableSpots || 0), 0),
+    activeEvents: myEvents.filter(e => e.status === 'REGISTRATION_OPEN' || e.status === 'PUBLISHED').length,
+    totalSpots: myEvents.reduce((acc, e) => acc + (e.totalAvailableSpots || 0), 0),
     upcomingEvents: myEvents.filter(e => e.eventDate && new Date(e.eventDate) > new Date()).length,
   }
 
@@ -41,165 +68,142 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout title="Dashboard" description="Resumen de tus eventos deportivos">
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Eventos
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              eventos creados
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Eventos Activos
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              con inscripciones abiertas
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Plazas Disponibles
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRegistrations}</div>
-            <p className="text-xs text-muted-foreground">
-              en total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Próximos Eventos
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.upcomingEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              por celebrar
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total de Eventos"
+          value={stats.totalEvents}
+          subtitle="eventos creados"
+          icon={LayoutGrid}
+          iconClass="text-blue-600"
+          bgClass="bg-blue-100"
+        />
+        <StatCard
+          title="Eventos Activos"
+          value={stats.activeEvents}
+          subtitle="con inscripciones abiertas"
+          icon={TrendingUp}
+          iconClass="text-emerald-600"
+          bgClass="bg-emerald-100"
+        />
+        <StatCard
+          title="Plazas Disponibles"
+          value={stats.totalSpots}
+          subtitle="en todos tus eventos"
+          icon={Users}
+          iconClass="text-violet-600"
+          bgClass="bg-violet-100"
+        />
+        <StatCard
+          title="Próximos Eventos"
+          value={stats.upcomingEvents}
+          subtitle="por celebrar"
+          icon={Clock}
+          iconClass="text-amber-600"
+          bgClass="bg-amber-100"
+        />
       </div>
 
-      {/* Recent Events & Quick Actions */}
+      {/* Recent Events + Quick Actions */}
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Eventos Recientes</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+            <CardTitle className="text-base font-semibold">Eventos Recientes</CardTitle>
+            <Button variant="ghost" size="sm" asChild className="gap-1 text-muted-foreground hover:text-foreground">
               <Link href="/dashboard/events">
                 Ver todos
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="flex h-32 items-center justify-center">
-                <p className="text-sm text-muted-foreground">Cargando eventos...</p>
+              <div className="flex h-40 items-center justify-center">
+                <Spinner className="h-6 w-6" />
               </div>
             ) : recentEvents.length === 0 ? (
-              <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed">
-                <p className="text-sm text-muted-foreground">No tienes eventos aún</p>
+              <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
+                <Calendar className="h-8 w-8 text-muted-foreground/40" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">No tienes eventos aún</p>
+                  <p className="text-xs text-muted-foreground">Crea tu primer evento para comenzar</p>
+                </div>
                 <Button size="sm" asChild>
                   <Link href="/dashboard/events/new">
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <PlusCircle className="mr-2 h-3.5 w-3.5" />
                     Crear evento
                   </Link>
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <ul className="divide-y divide-border">
                 {recentEvents.map((event) => {
                   const statusInfo = EVENT_STATUS_LABELS[event.status || 'DRAFT']
+                  const badgeColors: Record<string, string> = {
+                    success: 'bg-emerald-100 text-emerald-700',
+                    destructive: 'bg-red-100 text-red-700',
+                    secondary: 'bg-slate-100 text-slate-600',
+                    warning: 'bg-amber-100 text-amber-700',
+                    default: 'bg-blue-100 text-blue-700',
+                    outline: 'bg-slate-100 text-slate-500',
+                  }
                   return (
-                    <Link
-                      key={event.id}
-                      href={`/dashboard/events/${event.id}`}
-                      className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="flex-1">
-                        <h3 className="font-medium">{event.name}</h3>
-                        <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>{event.location}</span>
-                          {event.eventDate && (
-                            <span>
-                              {format(new Date(event.eventDate), "d 'de' MMMM, yyyy", { locale: es })}
+                    <li key={event.id}>
+                      <Link
+                        href={`/dashboard/events/${event.id}`}
+                        className="flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-muted/50"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{event.name}</p>
+                          <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                            {event.location && <span className="truncate">{event.location}</span>}
+                            {event.eventDate && (
+                              <span className="shrink-0">
+                                {format(new Date(event.eventDate), "d MMM yyyy", { locale: es })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          {event.minPrice !== undefined && (
+                            <span className="text-sm font-semibold text-foreground">
+                              {event.minPrice === 0 ? 'Gratis' : `$${event.minPrice.toFixed(0)}`}
                             </span>
                           )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {event.minPrice !== undefined && (
-                          <span className="text-sm font-medium">
-                            {event.minPrice === 0 ? 'Gratis' : `Desde $${event.minPrice.toFixed(2)}`}
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeColors[statusInfo.variant] ?? badgeColors.default}`}>
+                            {statusInfo.label}
                           </span>
-                        )}
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-medium ${
-                            statusInfo.variant === 'success'
-                              ? 'bg-success/10 text-success'
-                              : statusInfo.variant === 'destructive'
-                              ? 'bg-destructive/10 text-destructive'
-                              : statusInfo.variant === 'secondary'
-                              ? 'bg-secondary text-secondary-foreground'
-                              : 'bg-primary/10 text-primary'
-                          }`}
-                        >
-                          {statusInfo.label}
-                        </span>
-                      </div>
-                    </Link>
+                        </div>
+                      </Link>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             )}
           </CardContent>
         </Card>
 
+        {/* Quick Actions */}
         <Card>
-          <CardHeader>
-            <CardTitle>Acciones Rápidas</CardTitle>
+          <CardHeader className="border-b border-border pb-4">
+            <CardTitle className="text-base font-semibold">Acciones Rápidas</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full justify-start" asChild>
+          <CardContent className="p-4 space-y-2">
+            <Button className="w-full justify-start gap-3" asChild>
               <Link href="/dashboard/events/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
+                <PlusCircle className="h-4 w-4" />
                 Crear nuevo evento
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
+            <Button variant="outline" className="w-full justify-start gap-3" asChild>
               <Link href="/dashboard/events">
-                <Calendar className="mr-2 h-4 w-4" />
+                <Calendar className="h-4 w-4" />
                 Ver mis eventos
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start" asChild>
+            <Button variant="outline" className="w-full justify-start gap-3" asChild>
               <Link href="/dashboard/settings">
-                <Users className="mr-2 h-4 w-4" />
+                <Users className="h-4 w-4" />
                 Perfil de organizador
               </Link>
             </Button>

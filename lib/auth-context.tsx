@@ -21,7 +21,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 function getRolesFromToken(token: string): string[] {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
-    return Array.isArray(payload.roles) ? payload.roles : []
+    if (Array.isArray(payload.roles)) return payload.roles
+    if (typeof payload.roles === 'string' && payload.roles) return payload.roles.split(',')
+    return []
   } catch {
     return []
   }

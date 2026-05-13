@@ -173,21 +173,34 @@ export default function CreateEventPage() {
         </Button>
 
         {/* Step indicator */}
-        <div className="mb-8 flex items-center justify-center gap-2">
-          {STEPS.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                i < step ? 'bg-primary text-primary-foreground'
-                  : i === step ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {i < step ? '✓' : i + 1}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-1.5">
+            {STEPS.map((s, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div
+                  title={s.title}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ${
+                    i < step
+                      ? 'bg-primary text-white'
+                      : i === step
+                      ? 'ring-2 ring-primary ring-offset-2 bg-white text-primary'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  {i < step ? '✓' : i + 1}
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={`h-px w-6 transition-colors ${i < step ? 'bg-primary' : 'bg-slate-200'}`} />
+                )}
               </div>
-              {i < STEPS.length - 1 && (
-                <div className={`h-px w-8 transition-colors ${i < step ? 'bg-primary' : 'bg-muted'}`} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
+          <p className="mt-3 text-center text-sm font-medium text-foreground">
+            {STEPS[step].title}
+          </p>
+          <p className="text-center text-xs text-muted-foreground">
+            {STEPS[step].description}
+          </p>
         </div>
 
         {error && (
